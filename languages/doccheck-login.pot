@@ -1,0 +1,147 @@
+# Copyright (C) 2025 DocCheck
+# This file is distributed under the GPL-2.0+.
+msgid ""
+msgstr ""
+"Project-Id-Version: DocCheck Login 1.0.0\n"
+"Report-Msgid-Bugs-To: https://www.doccheck.com/\n"
+"POT-Creation-Date: 2025-10-31T13:29:00+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: admin/class-doccheck-login-admin.php:39
+#: admin/class-doccheck-login-admin.php:40
+msgid "DocCheck Login"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:62
+msgid "General Settings"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:70
+msgid "Client ID"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:76
+msgid "Your DocCheck OAuth Client ID"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:82
+msgid "Client Secret"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:88
+msgid "Your DocCheck OAuth Client Secret"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:94
+msgid "Redirect URI"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:100
+msgid "The URI where users will be redirected after authentication. Default is your site URL + /doccheck/callback"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:106
+msgid "Default User Role"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:112
+msgid "The default WordPress role for new users created via DocCheck Login"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:119
+msgid "API Endpoints"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:126
+msgid "Authorization Endpoint"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:132
+msgid "DocCheck OAuth authorization endpoint"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:138
+msgid "Token Endpoint"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:144
+msgid "DocCheck OAuth token endpoint"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:150
+msgid "User Data Endpoint"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:156
+msgid "DocCheck API endpoint to retrieve user data"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:163
+msgid "Advanced Settings"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:170
+msgid "Debug Mode"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:176
+msgid "Enable debug logging"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:177
+msgid "When enabled, debug information will be logged to the error log"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:202
+msgid "Documentation"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:204
+msgid "Shortcode Usage"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:205
+msgid "To display the DocCheck Login button in your content, use this shortcode:"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:208
+msgid "Customization Hooks"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:209
+msgid "Developers can use these hooks to customize the plugin behavior:"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:211
+msgid "Fires after a new user is created"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:212
+msgid "Fires when an existing user logs in"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:213
+msgid "Filter to customize user role based on DocCheck data"
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:226
+msgid "Configure your DocCheck OAuth credentials and general settings."
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:235
+msgid "DocCheck API endpoints (pre-filled with default values)."
+msgstr ""
+
+#: admin/class-doccheck-login-admin.php:244
+msgid "Advanced settings for troubleshooting and customization."
+msgstr ""
+
+#: includes/class-doccheck-login.php:154
+msgid "Or login with:"
+msgstr ""

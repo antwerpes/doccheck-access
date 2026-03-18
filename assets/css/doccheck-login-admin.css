@@ -1,0 +1,208 @@
+/**
+ * DocCheck Login Admin Styles
+ */
+
+/* Main Wrapper */
+
+.doccheck-login-header {
+
+    border-bottom: 1px solid #e2e8f0;
+}
+
+
+.doccheck-login-header img {
+    max-height: 40px;
+    margin-right: 20px;
+}
+
+.doccheck-login-header h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #1a202c;
+}
+
+/* Tabs */
+.doccheck-login-admin-wrap .nav-tab-wrapper {
+    margin-top: 0;
+    background: #fff;
+    border: none;
+    padding: 0 30px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.doccheck-login-admin-wrap .nav-tab {
+    margin: 0 20px 0 0;
+    padding: 15px 0;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    font-weight: 500;
+    color: #718096;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.doccheck-login-admin-wrap .nav-tab:hover {
+    color: #cc0000; /* DocCheck Red */
+}
+
+.doccheck-login-admin-wrap .nav-tab-active,
+.doccheck-login-admin-wrap .nav-tab-active:hover,
+.doccheck-login-admin-wrap .nav-tab-active:focus {
+    background: transparent;
+    color: #cc0000;
+    border-bottom-color: #cc0000;
+    outline: none;
+    box-shadow: none;
+}
+
+/* Content */
+.doccheck-login-content {
+    background: #fff;
+    padding: 30px;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    margin-top: 2px;
+}
+
+.doccheck-login-content h2 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #2d3748;
+}
+
+/* Form Styling */
+.doccheck-login-content table.form-table th {
+    font-weight: 500;
+    color: #4a5568;
+    width: 200px;
+}
+
+.doccheck-login-content input[type="text"],
+.doccheck-login-content input[type="password"],
+.doccheck-login-content select {
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 8px 12px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: none;
+    transition: border-color 0.2s;
+}
+
+.doccheck-login-content input[type="text"]:focus,
+.doccheck-login-content input[type="password"]:focus,
+.doccheck-login-content select:focus {
+    border-color: #cc0000;
+    box-shadow: 0 0 0 1px #cc0000;
+}
+
+.doccheck-login-content .description {
+    font-style: normal;
+    color: #718096;
+    margin-top: 8px;
+    display: block;
+}
+
+/* Matrix Table */
+.doccheck-matrix-table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.doccheck-matrix-table th,
+.doccheck-matrix-table td {
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    text-align: left;
+}
+
+.doccheck-matrix-table th {
+    background: #f7fafc;
+    font-weight: 600;
+}
+
+/* Documentation Tab */
+.doccheck-access-docs {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+}
+
+.doccheck-access-docs h3 {
+    color: #2d3748;
+    border-bottom: 2px solid #edf2f7;
+    padding-bottom: 10px;
+}
+
+.doccheck-access-docs code {
+    background: #edf2f7;
+    color: #c53030;
+    font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+.doccheck-access-docs pre {
+    background: #1a202c;
+    color: #e2e8f0;
+    padding: 15px;
+    border-radius: 6px;
+    overflow-x: auto;
+}
+
+.doccheck-access-docs pre code {
+    background: transparent;
+    color: inherit;
+}
+
+/* Developer Section */
+.doccheck-developer-section {
+    margin-top: 30px;
+    padding: 20px 25px;
+    border-left: 4px solid #cc0000;
+    background: #fff5f5;
+    border-radius: 0 6px 6px 0;
+}
+
+.doccheck-dev-badge {
+    display: inline-block;
+    background: #cc0000;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    vertical-align: middle;
+    margin-right: 6px;
+}
+
+.doccheck-developer-section h3 {
+    border-bottom-color: #f5c6c6;
+}
+
+/* Save Button */
+.doccheck-login-admin-wrap .submit {
+    padding-top: 20px;
+}
+
+.doccheck-login-admin-wrap .button-primary {
+    background: #cc0000;
+    border-color: #cc0000;
+    padding: 5px 20px;
+    height: auto;
+    line-height: 2;
+    font-weight: 600;
+    text-shadow: none;
+    box-shadow: 0 2px 4px rgba(204, 0, 0, 0.2);
+}
+
+.doccheck-login-admin-wrap .button-primary:hover,
+.doccheck-login-admin-wrap .button-primary:focus {
+    background: #b30000;
+    border-color: #b30000;
+    box-shadow: 0 4px 6px rgba(204, 0, 0, 0.3);
+}
