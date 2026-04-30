@@ -41,17 +41,41 @@ if (!class_exists('DocCheck_Login_Admin')) {
          */
         public function enqueue_admin_styles($hook)
         {
-            if ('settings_page_doccheck-access' !== $hook) {
-                return;
+            if ('settings_page_doccheck-access' === $hook) {
+                wp_enqueue_style(
+                        'doccheck-access-admin-style',
+                        DOCCHECK_ACCESS_PLUGIN_URL . 'assets/css/doccheck-login-admin.css',
+                        array(),
+                        DOCCHECK_ACCESS_VERSION
+                );
+
+                wp_enqueue_script(
+                        'doccheck-access-admin-script',
+                        DOCCHECK_ACCESS_PLUGIN_URL . 'assets/js/doccheck-login-admin-settings.js',
+                        array('jquery'),
+                        DOCCHECK_ACCESS_VERSION,
+                        true
+                );
+                wp_add_inline_script(
+                        'doccheck-access-admin-script',
+                        'window.doccheckAccessAdmin = ' . wp_json_encode(
+                                array(
+                                        'copiedText' => __('Copied!', 'doccheck-access'),
+                                )
+                        ) . ';',
+                        'before'
+                );
             }
 
-            wp_enqueue_style(
-                    'doccheck-access-admin-style',
-                    DOCCHECK_LOGIN_PLUGIN_URL . 'assets/css/doccheck-login-admin.css',
-                    array(),
-                    DOCCHECK_LOGIN_VERSION
-            );
-
+            if (in_array($hook, array('post.php', 'post-new.php'), true)) {
+                wp_enqueue_script(
+                        'doccheck-access-post-editor-script',
+                        DOCCHECK_ACCESS_PLUGIN_URL . 'assets/js/doccheck-login-admin-post-editor.js',
+                        array(),
+                        DOCCHECK_ACCESS_VERSION,
+                        true
+                );
+            }
         }
 
         /**
@@ -80,7 +104,10 @@ if (!class_exists('DocCheck_Login_Admin')) {
             register_setting(
                     'doccheck_login_settings',
                     'doccheck_login_settings',
-                    array($this, 'validate_settings')
+                    array(
+                            'type' => 'array',
+                            'sanitize_callback' => array($this, 'validate_settings'),
+                    )
             );
 
             // Add metabox for pages
@@ -244,6 +271,20 @@ if (!class_exists('DocCheck_Login_Admin')) {
                     array(
                             'id' => 'default_role',
                             'description' => __('The default WordPress role for new users created via DocCheck Login', 'doccheck-access'),
+                            'wrapper_class' => 'default-role-field'
+                    )
+            );
+
+            add_settings_field(
+                    'allow_user_creation',
+                    __('Automatic User Creation', 'doccheck-access'),
+                    array($this, 'render_checkbox_field'),
+                    'doccheck_login_user_settings',
+                    'doccheck_login_user_management_section',
+                    array(
+                            'id' => 'allow_user_creation',
+                            'label' => __('Allow creating local WordPress users for first-time DocCheck logins', 'doccheck-access'),
+                            'description' => __('Security recommendation: keep this disabled unless your site explicitly requires local WordPress accounts. Existing linked users can still sign in.', 'doccheck-access'),
                             'wrapper_class' => 'default-role-field'
                     )
             );
@@ -487,65 +528,6 @@ if (!class_exists('DocCheck_Login_Admin')) {
                         <?php submit_button(); ?>
                     </form>
                 </div>
-
-
-                <script type="text/javascript">
-                    jQuery(document).ready(function ($) {
-                        // Tab switching functionality
-                        $('.nav-tab-wrapper a').on('click', function (e) {
-                            e.preventDefault();
-
-                            // Get the tab to show
-                            var tabId = $(this).attr('href');
-                            var tabName = $(this).data('tab');
-
-                            // Hide all tabs
-                            $('.tab-content').hide();
-                            $('.nav-tab').removeClass('nav-tab-active');
-
-                            // Show the selected tab and set active class
-                            $(tabId).show();
-                            $(this).addClass('nav-tab-active');
-
-                            // Update URL without reloading the page (for bookmarking)
-                            if (history.pushState) {
-                                var url = new URL(window.location.href);
-                                url.searchParams.set('tab', tabName);
-                                window.history.pushState({path: url.href}, '', url.href);
-                            }
-                        });
-
-                        // Function to toggle the visibility of conditional fields based on Authentication Mode
-                        function toggleConditionalFields() {
-                            var authMode = $('#authentication_mode').val();
-
-                            if (authMode === 'wordpress_user') {
-                                // Show fields relevant to WordPress user mode
-                                $('.default-role-field, .scope-property-field').closest('tr').show();
-                            } else {
-                                // Hide fields not applicable in anonymous session mode
-                                $('.default-role-field, .scope-property-field').closest('tr').hide();
-
-                                // Uncheck all optional scope and property checkboxes in the UI
-                                // This provides immediate feedback, though the server-side validation also handles it.
-                                $('.doccheck-matrix-table input[type="checkbox"]').each(function() {
-                                    var $checkbox = $(this);
-                                    // Don't uncheck the unique_id (it's often disabled/required)
-                                    if ($checkbox.attr('name').indexOf('[unique_id]') === -1) {
-                                        $checkbox.prop('checked', false);
-                                    }
-                                });
-                            }
-                        }
-
-                        // Run on page load
-                        toggleConditionalFields();
-
-                        // Run when authentication mode changes
-                        $('#authentication_mode').on('change', toggleConditionalFields);
-                    });
-                </script>
-
             </div>
             <?php
         }
@@ -650,9 +632,14 @@ if (!class_exists('DocCheck_Login_Admin')) {
             $label = isset($args['label']) ? $args['label'] : '';
             $description = isset($args['description']) ? $args['description'] : '';
             $value = isset($this->settings->$id) ? $this->settings->$id : '';
+            $wrapper_class = isset($args['wrapper_class']) ? $args['wrapper_class'] : '';
 
             // Check if it's 'on' or true (for legacy/new checkbox fields)
             $checked = ($value === 'on' || $value === true || $value === 1);
+
+            if (!empty($wrapper_class)) {
+                echo '<div class="' . esc_attr($wrapper_class) . '">';
+            }
 
             ?>
             <label for="<?php echo esc_attr($id); ?>">
@@ -663,7 +650,12 @@ if (!class_exists('DocCheck_Login_Admin')) {
             </label>
             <?php if ($description) : ?>
             <p class="description"><?php echo wp_kses_post($description); ?></p>
-        <?php endif; ?>
+        <?php endif;
+
+            if (!empty($wrapper_class)) {
+                echo '</div>';
+            }
+            ?>
             <?php
         }
 
@@ -680,8 +672,16 @@ if (!class_exists('DocCheck_Login_Admin')) {
             $value = isset($this->settings->$id) ? $this->settings->$id : 'subscriber';
             $wrapper_class = isset($args['wrapper_class']) ? $args['wrapper_class'] : '';
 
-            // Get available roles
-            $roles = wp_roles()->get_names();
+            // Only offer roles that cannot manage the site (no manage_options or edit_others_posts).
+            $all_roles = wp_roles()->roles;
+            $roles     = array();
+            foreach ( $all_roles as $role_id => $role_data ) {
+                $caps = isset( $role_data['capabilities'] ) ? $role_data['capabilities'] : array();
+                if ( ! empty( $caps['manage_options'] ) || ! empty( $caps['edit_others_posts'] ) ) {
+                    continue;
+                }
+                $roles[ $role_id ] = translate_user_role( $role_data['name'] );
+            }
 
             // If wrapper class is provided, wrap the field
             if (!empty($wrapper_class)) {
@@ -981,58 +981,6 @@ if (!class_exists('DocCheck_Login_Admin')) {
             echo '</table>';
             echo '</div>';
 
-            // Add JavaScript to enable/disable properties based on scope selection
-            echo '<script type="text/javascript">
-                jQuery(document).ready(function($) {
-                    // Toggle properties when scope is toggled
-                    $(".scope-checkbox input[type=checkbox]").on("change", function() {
-                        var $row = $(this).closest("tr");
-                        var isChecked = $(this).is(":checked");
-                    
-                        if (isChecked) {
-                            $row.find(".property-list").removeClass("disabled");
-                            $row.find(".property-list input[type=checkbox]").prop("disabled", false);
-                        } else {
-                            $row.find(".property-list").addClass("disabled");
-                            $row.find(".property-list input[type=checkbox]").prop("disabled", true);
-                        }
-                    });
-                
-                    // Initialize on load
-                    $(".scope-row input[type=checkbox]").trigger("change");
-                });
-            </script>';
-
-            // Add some CSS to make the matrix look better
-            echo '<style>
-                .doccheck-scopes-matrix {
-                    margin-top: 10px;
-                }
-                .doccheck-scopes-matrix .scope-checkbox {
-                    width: 60px;
-                    text-align: center;
-                }
-                .doccheck-scopes-matrix .scope-name {
-                    width: 120px;
-                }
-                .doccheck-scopes-matrix .scope-license {
-                    width: 100px;
-                }
-                .doccheck-scopes-matrix .required {
-                    color: #d63638;
-                }
-                .property-list.disabled {
-                    opacity: 0.5;
-                }
-                .property-item {
-                    margin-bottom: 5px;
-                }
-                .property-item label small {
-                    color: #666;
-                    font-style: italic;
-                }
-            </style>';
-
             if (!empty($wrapper_class)) {
                 echo '</div>';
             }
@@ -1171,35 +1119,6 @@ if (!class_exists('DocCheck_Login_Admin')) {
             <p class="description"><?php echo wp_kses_post($description); ?></p>
         <?php endif; ?>
 
-            <script>
-                jQuery(document).ready(function ($) {
-                    $('#copy-redirect-uri').on('click', function () {
-                        var copyText = document.getElementById("doccheck_redirect_uri");
-                        copyText.select();
-                        copyText.setSelectionRange(0, 99999); // For mobile devices
-
-                        try {
-                            navigator.clipboard.writeText(copyText.value).then(function () {
-                                var $btn = $('#copy-redirect-uri');
-                                var originalText = $btn.text();
-                                $btn.text('<?php esc_html_e('Copied!', 'doccheck-access'); ?>');
-                                setTimeout(function () {
-                                    $btn.text(originalText);
-                                }, 2000);
-                            });
-                        } catch (err) {
-                            // Fallback for older browsers
-                            document.execCommand("copy");
-                            var $btn = $('#copy-redirect-uri');
-                            var originalText = $btn.text();
-                            $btn.text('<?php esc_html_e('Copied!', 'doccheck-access'); ?>');
-                            setTimeout(function () {
-                                $btn.text(originalText);
-                            }, 2000);
-                        }
-                    });
-                });
-            </script>
             <?php
         }
 
@@ -1235,7 +1154,6 @@ if (!class_exists('DocCheck_Login_Admin')) {
             // Text fields
             $text_fields = array(
                     'client_id',
-                    'client_secret',
                     'auth_server_url',
                     'redirect_route',
                     'redirect_uri', // Keep for backwards compatibility
@@ -1247,11 +1165,18 @@ if (!class_exists('DocCheck_Login_Admin')) {
                 $output[$field] = isset($input[$field]) ? sanitize_text_field($input[$field]) : '';
             }
 
-            // Role select
-            $output['default_role'] = isset($input['default_role']) ? sanitize_text_field($input['default_role']) : 'doccheck_user';
+            // Keep OAuth secrets intact (except unsafe control characters/new lines).
+            $output['client_secret'] = isset($input['client_secret']) ? $this->sanitize_client_secret($input['client_secret']) : '';
 
-            // Make sure the role exists, otherwise default to doccheck_user or subscriber
-            if (!get_role($output['default_role'])) {
+            // Role select — must exist and must not carry high-privilege capabilities.
+            $output['default_role'] = isset($input['default_role']) ? sanitize_text_field($input['default_role']) : 'subscriber';
+
+            $role_obj = get_role($output['default_role']);
+            if (
+                ! $role_obj ||
+                ! empty( $role_obj->capabilities['manage_options'] ) ||
+                ! empty( $role_obj->capabilities['edit_others_posts'] )
+            ) {
                 $output['default_role'] = get_role('doccheck_user') ? 'doccheck_user' : 'subscriber';
             }
 
@@ -1262,12 +1187,18 @@ if (!class_exists('DocCheck_Login_Admin')) {
             $output['debug_mode'] = isset($input['debug_mode']) ? 'on' : 'off';
             $output['make_all_pages_private'] = isset($input['make_all_pages_private']) ? 'on' : 'off';
             $output['auto_assign_parent_config'] = isset($input['auto_assign_parent_config']) ? 'on' : 'off';
+            $output['allow_user_creation'] = isset($input['allow_user_creation']) ? 'on' : 'off';
 
             // Authentication Mode
             $valid_auth_modes = array('anonymous_session', 'wordpress_user');
             $output['authentication_mode'] = isset($input['authentication_mode']) && in_array($input['authentication_mode'], $valid_auth_modes)
                     ? $input['authentication_mode']
-                    : 'wordpress_user';
+                    : 'anonymous_session';
+
+            // In anonymous session mode, local user creation is not used.
+            if ($output['authentication_mode'] === 'anonymous_session') {
+                $output['allow_user_creation'] = 'off';
+            }
 
             // Add doccheck_user role if wordpress_user mode is selected
             if ($output['authentication_mode'] === 'wordpress_user') {
@@ -1342,6 +1273,26 @@ if (!class_exists('DocCheck_Login_Admin')) {
             // Endpoints are now handled internally in the OAuth class
 
             return $output;
+        }
+
+        /**
+         * Sanitize OAuth client secret without breaking valid secret characters.
+         *
+         * @param mixed $value Secret field input.
+         * @return string
+         * @since 2.4.1
+         */
+        private function sanitize_client_secret($value)
+        {
+            if (!is_scalar($value)) {
+                return '';
+            }
+
+            $secret = wp_unslash((string) $value);
+            $secret = trim($secret);
+
+            // Remove control chars but preserve punctuation/symbols commonly used in secrets.
+            return preg_replace('/[\x00-\x1F\x7F]/u', '', $secret);
         }
 
         /**
@@ -1446,12 +1397,6 @@ if (!class_exists('DocCheck_Login_Admin')) {
                 echo '</fieldset>';
                 echo '</div>';
 
-                // Toggle role list visibility based on the protection checkbox
-                echo '<script>
-                    document.getElementById("doccheck_protected").addEventListener("change", function() {
-                        document.getElementById("doccheck-role-restriction").style.display = this.checked ? "" : "none";
-                    });
-                </script>';
             }
 
         }

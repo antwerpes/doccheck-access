@@ -1,15 +1,13 @@
 <?php
 /**
- * Plugin Name: DocCheck Login
- * Plugin URI: https://www.doccheck.com/
+ * Plugin Name: DocCheck Access
  * Description: Integrates DocCheck OAuth2 Login into WordPress
- * Version: 1.0.0
- * Author: DocCheck
- * Author URI: https://www.doccheck.com/
+ * Version: 1.0.2
+ * Author: DocCheck Agency
+ * Author URI: https://doccheck.agency/
  * License: GPL-2.0+
  * License URI: http://www.gnu.org/licenses/gpl-2.0.txt
  * Text Domain: doccheck-access
- * Domain Path: /languages
  */
 
 // If this file is called directly, abort.
@@ -18,14 +16,14 @@ if (!defined('WPINC')) {
 }
 
 // Define plugin constants
-define('DOCCHECK_LOGIN_VERSION', '1.0.0');
-define('DOCCHECK_LOGIN_PLUGIN_PATH', plugin_dir_path(__FILE__));
-define('DOCCHECK_LOGIN_PLUGIN_URL', plugin_dir_url(__FILE__));
+define('DOCCHECK_ACCESS_VERSION', '1.0.2');
+define('DOCCHECK_ACCESS_PLUGIN_PATH', plugin_dir_path(__FILE__));
+define('DOCCHECK_ACCESS_PLUGIN_URL', plugin_dir_url(__FILE__));
 
 /**
  * Activation hook
  */
-function doccheck_login_activate() {
+function doccheck_access_activate() {
     // Ensure our custom endpoint is registered
     add_rewrite_endpoint('doccheck', EP_ROOT);
     flush_rewrite_rules();
@@ -45,7 +43,9 @@ function doccheck_login_activate() {
             'auth_server_url' => 'https://auth.doccheck.com',
             'redirect_uri' => home_url('doccheck/callback'),
             'redirect_route' => 'doccheck/callback',
-            'default_role' => 'doccheck_user',
+            'default_role' => 'subscriber',
+            'allow_user_creation' => 'off',
+            'authentication_mode' => 'anonymous_session',
             'default_scopes' => 'openid profile',
             'debug_mode' => 'off',
             // Default scope selections
@@ -85,7 +85,7 @@ function doccheck_login_activate() {
         add_option('doccheck_login_settings', $default_settings);
     }
 }
-register_activation_hook(__FILE__, 'doccheck_login_activate');
+register_activation_hook(__FILE__, 'doccheck_access_activate');
 
 /**
  * Register doccheck query vars
@@ -93,35 +93,31 @@ register_activation_hook(__FILE__, 'doccheck_login_activate');
  * @param array $vars Query vars.
  * @return array Modified query vars.
  */
-function doccheck_login_query_vars($vars) {
+function doccheck_access_query_vars($vars) {
     $vars[] = 'doccheck';
     return $vars;
 }
-add_filter('query_vars', 'doccheck_login_query_vars');
+add_filter('query_vars', 'doccheck_access_query_vars');
 
 /**
  * Deactivation hook
  */
-function doccheck_login_deactivate() {
+function doccheck_access_deactivate() {
     flush_rewrite_rules();
     // Optional: remove the custom role on deactivation
     // remove_role('doccheck_user');
 }
-register_deactivation_hook(__FILE__, 'doccheck_login_deactivate');
+register_deactivation_hook(__FILE__, 'doccheck_access_deactivate');
 
 /**
  * Include required files
  */
-require_once DOCCHECK_LOGIN_PLUGIN_PATH . 'includes/class-doccheck-login.php';
-require_once DOCCHECK_LOGIN_PLUGIN_PATH . 'includes/class-doccheck-login-oauth.php';
-require_once DOCCHECK_LOGIN_PLUGIN_PATH . 'includes/template-functions.php';
+require_once DOCCHECK_ACCESS_PLUGIN_PATH . 'includes/class-doccheck-login.php';
+require_once DOCCHECK_ACCESS_PLUGIN_PATH . 'includes/class-doccheck-login-oauth.php';
+require_once DOCCHECK_ACCESS_PLUGIN_PATH . 'includes/template-functions.php';
 
 // Initialize the plugin
-function doccheck_login_run() {
-    // Start session if not already started
-    if (!session_id() && !headers_sent()) {
-        session_start();
-    }
+function doccheck_access_run() {
     $plugin = new DocCheck_Login();
     $plugin->run();
 }
@@ -134,4 +130,4 @@ add_action('template_redirect', function () {
     }
 });
 
-doccheck_login_run();
+doccheck_access_run();

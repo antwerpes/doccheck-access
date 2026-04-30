@@ -23,14 +23,6 @@ if (!class_exists('DocCheck_Login_OAuth')) {
          */
         private $settings;
 
-        /**
-         * Nonce generated for the current request, reused across multiple buttons
-         *
-         * @since  1.0.0
-         * @access private
-         * @var    string|null
-         */
-        private $current_nonce = null;
 
         /**
          * Initialize the class
@@ -42,33 +34,70 @@ if (!class_exists('DocCheck_Login_OAuth')) {
         public function __construct(DocCheck_Login_Settings $settings)
         {
             $this->settings = $settings;
+        }
 
-            if (!session_id()) {
-                session_start();
+        /**
+         * Start a PHP session only when needed.
+         *
+         * @param bool $create_if_missing Whether to create a new session when no session cookie exists.
+         * @return bool True when a session is active.
+         * @since 2.4.1
+         */
+        private function ensure_session_started($create_if_missing = false)
+        {
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                return true;
             }
+
+            if (headers_sent()) {
+                return false;
+            }
+
+            if (!$create_if_missing && !isset($_COOKIE[session_name()])) {
+                return false;
+            }
+
+            session_start();
+            return session_status() === PHP_SESSION_ACTIVE;
         }
 
         /**
          * Generate a secure random state parameter, optionally with encrypted redirect URL
          *
-         * @param string $redirect_url Optional redirect URL to include in state
+         * Each call produces its own nonce so that multiple login buttons on the same page
+         * can carry independent configurations (different samepageredirect, utm_params, or
+         * app_state). Sharing a single nonce caused data from the first button to overwrite
+         * every subsequent button's transient, breaking multi-shortcode pages.
+         *
+         * @param string|null $redirect_url Optional redirect URL to include in state.
+         * @param array       $utm_params   Optional UTM/tracking parameters to carry through
+         *                                  the OAuth round-trip and re-attach after login.
+         * @param string      $app_state    Optional custom app-state (from the shortcode's state
+         *                                  attribute, e.g. "bereich_orange") to store in the
+         *                                  transient and restore as ?state= after login.
          *
          * @return string State parameter
          * @since  1.0.0
          */
-        public function generate_state($redirect_url = null)
+        public function generate_state($redirect_url = null, $utm_params = [], $app_state = '')
         {
-            // Reuse the same nonce for all buttons rendered in a single request
-            // so whichever button the user clicks, the nonce is valid
-            if ($this->current_nonce === null) {
-                $bytes = function_exists('random_bytes') ? random_bytes(16) : openssl_random_pseudo_bytes(16);
-                $this->current_nonce = bin2hex($bytes);
+            // Each button gets its own nonce so its transient holds the correct data for
+            // that specific button's configuration (redirect URL, UTM params, app state).
+            $bytes = function_exists('random_bytes') ? random_bytes(16) : openssl_random_pseudo_bytes(16);
+            $nonce = bin2hex($bytes);
 
-                // Store in a transient (reliable across requests, unlike PHP sessions)
-                set_transient('doccheck_state_' . $this->current_nonce, 1, 600);
+            // Store nonce validity, optional UTM params, and optional app-state in a transient
+            // (reliable across requests, unlike PHP sessions)
+            $transient_data = ['valid' => 1];
+            if (!empty($utm_params)) {
+                $transient_data['utm'] = $utm_params;
             }
+            if ($app_state !== '') {
+                $transient_data['app_state'] = $app_state;
+            }
+            set_transient('doccheck_state_' . $nonce, $transient_data, 600);
 
-            $state = $this->current_nonce;
+            $state = $nonce;
 
             // If redirect URL is provided, append it to state after encryption
             if ($redirect_url) {
@@ -90,7 +119,7 @@ if (!class_exists('DocCheck_Login_OAuth')) {
         private function encrypt_url($url)
         {
             // Create a simple encryption key based on the client secret (or a static salt if not available)
-            $encryption_key = $this->settings->get_client_secret() ?: DOCCHECK_LOGIN_VERSION;
+            $encryption_key = $this->settings->get_client_secret() ?: DOCCHECK_ACCESS_VERSION;
 
             // Use WordPress' nonce system as a simple encryption method
             $encrypted = base64_encode(wp_salt('auth').':'.$url);
@@ -164,7 +193,8 @@ if (!class_exists('DocCheck_Login_OAuth')) {
 
             // Verify the nonce exists as a transient (set during generate_state)
             $transient_key = 'doccheck_state_' . $nonce;
-            if (!get_transient($transient_key)) {
+            $transient_value = get_transient($transient_key);
+            if (!$transient_value) {
                 $this->log_debug('No valid state transient found for nonce: ' . $nonce);
                 return false;
             }
@@ -175,6 +205,16 @@ if (!class_exists('DocCheck_Login_OAuth')) {
             $result = [
                 'nonce' => $nonce,
             ];
+
+            // Extract UTM/tracking params if stored (array format set by generate_state)
+            if (is_array($transient_value) && !empty($transient_value['utm'])) {
+                $result['utm_params'] = $transient_value['utm'];
+            }
+
+            // Extract custom app-state stored from shortcode attribute
+            if (is_array($transient_value) && isset($transient_value['app_state']) && $transient_value['app_state'] !== '') {
+                $result['app_state'] = $transient_value['app_state'];
+            }
 
             // If we have a second part, it's the encrypted redirect URL
             if (isset($parts[1])) {
@@ -236,11 +276,11 @@ if (!class_exists('DocCheck_Login_OAuth')) {
                 return;
             }
 
-            // Check for state parameter
-            //if (!isset($_GET['state'])) {
-            //    $this->handle_error('missing_state');
-            //    return;
-            //}
+            // Check for state parameter — required for CSRF protection (OAuth 2.0 §10.12)
+            if (!isset($_GET['state'])) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- OAuth state replaces nonce here.
+                $this->handle_error('missing_state');
+                return;
+            }
 
             // Parse and verify state
             $state_data = [];
@@ -278,20 +318,24 @@ if (!class_exists('DocCheck_Login_OAuth')) {
                 return;
             }
 
-            // Get user data using access token
-            $user_data = $this->get_user_data($token_data['access_token']);
+            // In anonymous session mode, skip user data retrieval — no user data is needed.
+            if ($this->settings->get_authentication_mode() === 'anonymous_session') {
+                $this->log_debug('Anonymous session mode: skipping user data request');
+                $this->authenticate_user([]);
+            } else {
+                // Get user data using access token
+                $user_data = $this->get_user_data($token_data['access_token']);
 
-            if (!$user_data || isset($user_data['error'])) {
-                $error_msg = isset($user_data['error']) ? $user_data['error'] : 'user_data_request_failed';
-                $this->handle_error($error_msg);
+                if (!$user_data || isset($user_data['error'])) {
+                    $error_msg = isset($user_data['error']) ? $user_data['error'] : 'user_data_request_failed';
+                    $this->handle_error($error_msg);
 
-                return;
+                    return;
+                }
+
+                // Log user in or create account if needed
+                $this->authenticate_user($user_data);
             }
-
-
-
-            // Log user in or create account if needed
-            $this->authenticate_user($user_data);
 
             // Clear session data
             unset($_SESSION['doccheck_code_verifier']);
@@ -323,6 +367,23 @@ if (!class_exists('DocCheck_Login_OAuth')) {
                     // Fall back to home URL if no default target page is set
                     $redirect_to = home_url();
                     $this->log_debug('Redirecting to home URL: '.$redirect_to);
+                }
+
+                // Re-attach UTM/tracking parameters stored before login so they are
+                // available on the destination page (e.g. for analytics or app-state routing).
+                // Note: when samepageredirect=1 the UTMs are already embedded in redirect_url
+                // above, so we only append them for the default-target-page / home-URL path.
+                $extra_params = !empty($state_data['utm_params']) ? $state_data['utm_params'] : [];
+
+                // Append custom app-state from shortcode attribute as ?state=.
+                // Takes priority over a same-named value captured from the landing URL.
+                if (!empty($state_data['app_state'])) {
+                    $extra_params['state'] = $state_data['app_state'];
+                }
+
+                if (!empty($extra_params)) {
+                    $redirect_to = add_query_arg($extra_params, $redirect_to);
+                    $this->log_debug('Appended tracking params to redirect URL: '.$redirect_to);
                 }
             }
 
@@ -383,7 +444,6 @@ if (!class_exists('DocCheck_Login_OAuth')) {
                     'redirect_uri'  => $redirect_uri,
                     'code_verifier' => $code_verifier,
                 ],
-                'sslverify'   => false,
             ];
 
             $response = wp_remote_post($token_endpoint, $args);
@@ -462,7 +522,6 @@ if (!class_exists('DocCheck_Login_OAuth')) {
                 'headers'     => [
                     'Authorization' => 'Bearer '.$access_token,
                 ],
-                'sslverify'   => false,
             ];
 
             $response = wp_remote_get($userdata_endpoint, $args);
@@ -565,6 +624,12 @@ if (!class_exists('DocCheck_Login_OAuth')) {
 
             // Create new user if none exists
             if (!$user) {
+                if (!$this->settings->get_allow_user_creation()) {
+                    $this->log_debug('User creation blocked by settings (allow_user_creation=off)');
+                    $this->handle_error('user_creation_disabled');
+                    return;
+                }
+
                 $user = $this->create_dc_word_user($doccheck_id, $user_data);
 
                 if (is_null($user)) {
@@ -618,6 +683,14 @@ if (!class_exists('DocCheck_Login_OAuth')) {
 
             // Default role from settings
             $default_role = $this->settings->get_default_role();
+            $role_obj = get_role($default_role);
+            if (
+                !$role_obj ||
+                !empty($role_obj->capabilities['manage_options']) ||
+                !empty($role_obj->capabilities['edit_others_posts'])
+            ) {
+                $default_role = 'subscriber';
+            }
 
             // Create user
             $user_id = wp_create_user($username, $password, $email);
@@ -753,6 +826,11 @@ if (!class_exists('DocCheck_Login_OAuth')) {
         {
             $this->log_debug('Using session-only authentication (no WordPress user creation)');
 
+            if (!$this->ensure_session_started(true)) {
+                $this->log_debug('Unable to start session for anonymous session authentication');
+                return false;
+            }
+
             // Store session data
             $_SESSION['doccheck_session_auth'] = true;
             $_SESSION['doccheck_session_data'] = $user_data;
@@ -798,9 +876,17 @@ if (!class_exists('DocCheck_Login_OAuth')) {
              */
             $new_role = apply_filters('doccheck_login_map_role', $user->roles[0], $user_data, $user_id);
 
-            // Update role if changed
-            if ($new_role && $new_role !== $user->roles[0]) {
-                $user->set_role($new_role);
+            // Reject any role that grants site-management capabilities.
+            $role_obj = get_role($new_role);
+            if (
+                $role_obj &&
+                empty( $role_obj->capabilities['manage_options'] ) &&
+                empty( $role_obj->capabilities['edit_others_posts'] )
+            ) {
+                // Update role if changed
+                if ($new_role !== $user->roles[0]) {
+                    $user->set_role($new_role);
+                }
             }
         }
 
@@ -828,6 +914,10 @@ if (!class_exists('DocCheck_Login_OAuth')) {
          */
         private function get_or_create_session_id()
         {
+            if (!$this->ensure_session_started(false)) {
+                return sanitize_text_field(uniqid('dcs_', true));
+            }
+
             if (!isset($_SESSION['doccheck_session_id'])) {
                 $_SESSION['doccheck_session_id'] = uniqid('dcs_', true);
             }
@@ -989,6 +1079,8 @@ if (!class_exists('DocCheck_Login_OAuth')) {
                 }
             }
 
+            $this->ensure_session_started(false);
+
             // Check for DocCheck session
             if (isset($_SESSION['doccheck_session_auth']) && $_SESSION['doccheck_session_auth'] === true) {
                 return true;
@@ -1021,6 +1113,8 @@ if (!class_exists('DocCheck_Login_OAuth')) {
                     return $user_data;
                 }
             }
+
+            $this->ensure_session_started(false);
 
             // For session users
             if (isset($_SESSION['doccheck_session_auth']) && $_SESSION['doccheck_session_auth'] === true) {

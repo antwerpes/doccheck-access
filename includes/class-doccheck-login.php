@@ -66,11 +66,11 @@ if (!class_exists('DocCheck_Login')) {
         private function load_dependencies()
         {
             // Load the settings class
-            require_once DOCCHECK_LOGIN_PLUGIN_PATH . 'includes/class-doccheck-login-settings.php';
+            require_once DOCCHECK_ACCESS_PLUGIN_PATH . 'includes/class-doccheck-login-settings.php';
 
             // Load admin functionality in admin area
             if (is_admin()) {
-                require_once DOCCHECK_LOGIN_PLUGIN_PATH . 'admin/class-doccheck-login-admin.php';
+                require_once DOCCHECK_ACCESS_PLUGIN_PATH . 'admin/class-doccheck-login-admin.php';
             }
         }
 
@@ -84,6 +84,9 @@ if (!class_exists('DocCheck_Login')) {
             // Register hooks
             $this->define_public_hooks();
             $this->define_admin_hooks();
+
+            // Register privacy policy content
+            add_action('admin_init', [$this, 'add_privacy_policy_content']);
 
             // Set up rewrite rules for OAuth callback
             add_action('init', [$this, 'add_rewrite_rules']);
@@ -123,12 +126,12 @@ if (!class_exists('DocCheck_Login')) {
             add_shortcode('dc_logout', [$this, 'logout_shortcode']);
             add_shortcode('dc_sitemap', [$this, 'sitemap_shortcode']);
 
-            // Enqueue scripts and styles (frontend only)
-            add_action('wp_enqueue_scripts', [$this, 'enqueue_scripts']);
+            // Script is enqueued on demand inside login_shortcode() and protect_page_content().
 
             // Protect pages if configured
             add_filter('the_content', [$this, 'protect_page_content']);
             add_action('template_redirect', [$this, 'template_redirect_protection']);
+            add_action('wp_enqueue_scripts', [$this, 'enqueue_protected_fallback_styles']);
 
             // Exclude protected pages from WordPress XML sitemap
             add_filter('wp_sitemaps_posts_query_args', [$this, 'filter_xml_sitemap_posts'], 10, 2);
@@ -173,6 +176,62 @@ if (!class_exists('DocCheck_Login')) {
 
 
         /**
+         * Get sanitized UTM and tracking parameters from the current request URL.
+         *
+         * Captures common tracking parameters (UTM, DocCheck-specific, and app state),
+         * sanitizes their values, and returns them as a key-value array ready for
+         * re-appending to the post-login redirect URL.
+         *
+         * A nonce check is performed when the parameters arrive via a form submission
+         * (utm_nonce present). When parameters are plain URL query args (the usual case
+         * for tracking links) no nonce is required and processing continues normally.
+         *
+         * @return array Associative array of sanitized parameter names → escaped values.
+         * @since 2.4.0
+         */
+        public function dcl_get_sanitized_utm_parameters()
+        {
+            $utm_parameters = array(
+                'utm_source',
+                'utm_medium',
+                'utm_campaign',
+                'utm_term',
+                'utm_content',
+                'route',
+                'uadpub',
+                'cmpid',
+                'ucampaign',
+                'source',
+                'umedium',
+                'ucreative',
+                'outcome',
+                'uplace',
+                'state',
+            );
+
+            $sanitized_utm = array();
+
+            // Verify nonce only when this is a form submission that includes one.
+            // Tracking parameters arriving via plain URL do not carry a nonce, which is expected.
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            $is_valid_nonce = isset( $_GET['utm_nonce'] )
+                // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+                ? wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['utm_nonce'] ) ), 'dcl_utm_parameters' )
+                : false;
+
+            foreach ( $utm_parameters as $param ) {
+                // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- UTM params are read-only tracking data from URL; nonce is not applicable for standard tracking links.
+                $value = isset( $_GET[ $param ] ) ? sanitize_text_field( wp_unslash( $_GET[ $param ] ) ) : '';
+
+                if ( $value !== '' ) {
+                    $sanitized_utm[ $param ] = esc_html( $value );
+                }
+            }
+
+            return $sanitized_utm;
+        }
+
+        /**
          * Shortcode for embedding login button
          *
          * @param array $atts Shortcode attributes.
@@ -186,6 +245,9 @@ if (!class_exists('DocCheck_Login')) {
             if ($this->oauth->is_authenticated()) {
                 return '';
             }
+
+            // Enqueue the login button script only when the button is actually rendered.
+            $this->enqueue_scripts();
 
             // Parse shortcode attributes
             $atts = shortcode_atts(array(
@@ -213,17 +275,29 @@ if (!class_exists('DocCheck_Login')) {
             // Get scopes from settings if not provided
             $scopes = !empty($atts['scope']) ? $atts['scope'] : $this->settings->get_scopes_string();
 
+            // Capture tracking/UTM parameters present on the current page so they can
+            // be re-attached to the destination URL after the OAuth round-trip.
+            $utm_params = $this->dcl_get_sanitized_utm_parameters();
+
+            // Custom app-state from the shortcode attribute (e.g. [doccheck_login state="bereich_orange"]).
+            // Per the Anleitung this value is used for post-login routing or context passing.
+            // It is ALWAYS routed through the nonce system – never used as the raw OAuth state –
+            // so the CSRF nonce transient is always created and the callback never rejects it.
+            $app_state = sanitize_text_field($atts['state']);
+
             // Handle redirect URL in state parameter if samepageredirect is enabled
             if ($atts['samepageredirect'] === '1') {
-                // Get current page URL
+                // Build current page URL and embed UTM params so they survive the round-trip
                 global $wp;
-                $current_url = home_url(add_query_arg(array(), $wp->request));
+                $current_url = home_url(add_query_arg($utm_params, $wp->request));
 
-                // Generate state with encrypted redirect URL
-                $state = $this->oauth->generate_state($current_url);
+                // Generate state with encrypted redirect URL (UTMs are already in the URL)
+                $state = $this->oauth->generate_state($current_url, [], $app_state);
             } else {
-                // Use provided state or generate simple one
-                $state = !empty($atts['state']) ? $atts['state'] : $this->oauth->generate_state();
+                // Always generate a nonce-based state carrying UTM params and optional app-state.
+                // Passing a raw custom value directly as the OAuth state would bypass nonce
+                // validation and cause the callback to reject it with invalid_state.
+                $state = $this->oauth->generate_state(null, $utm_params, $app_state);
             }
 
             // Keep the original dc-login-button
@@ -253,7 +327,11 @@ if (!class_exists('DocCheck_Login')) {
         public function hide_content_shortcode($atts, $content = null)
         {
             if ($this->oauth->is_authenticated()) {
-                return do_shortcode($content);
+                if (null === $content) {
+                    return '';
+                }
+
+                return wp_kses_post(do_shortcode($content));
             }
             return '';
         }
@@ -277,25 +355,59 @@ if (!class_exists('DocCheck_Login')) {
                 'redirect' => home_url(),
             ), $atts);
 
-            return '<a href="' . esc_url(wp_logout_url($atts['redirect'])) . '">' . __('Logout', 'doccheck-access') . '</a>';
+            $redirect = esc_url_raw($atts['redirect']);
+
+            return '<a href="' . esc_url(wp_logout_url($redirect)) . '">' . esc_html__('Logout', 'doccheck-access') . '</a>';
         }
 
         /**
-         * Enqueue scripts and styles
+         * Enqueue the DocCheck login button script.
+         *
+         * Called on demand (from login_shortcode / protect_page_content) rather than
+         * unconditionally on every page, so the CDN is only contacted when the login
+         * button is actually rendered.
          *
          * @since 1.0.0
          */
         public function enqueue_scripts()
         {
-            $version = $this->settings->get_login_button_version();
-            $script_url = sprintf('https://dccdn.de/static.doccheck.com/components/login-button/%s/main.js', $version);
+            if ( wp_script_is( 'doccheck-access-button', 'enqueued' ) ) {
+                return;
+            }
+
+            $version    = $this->settings->get_login_button_version();
+            $script_url = sprintf( 'https://dccdn.de/static.doccheck.com/components/login-button/%s/main.js', $version );
 
             wp_enqueue_script(
                 'doccheck-access-button',
                 $script_url,
                 [],
-                DOCCHECK_LOGIN_VERSION,
-                false
+                DOCCHECK_ACCESS_VERSION,
+                true // Load in footer to avoid blocking page render.
+            );
+        }
+
+        /**
+         * Enqueue fallback template styles when plugin fallback template is used.
+         *
+         * @since 2.4.1
+         * @return void
+         */
+        public function enqueue_protected_fallback_styles()
+        {
+            if (!$this->is_current_page_protected()) {
+                return;
+            }
+
+            if (locate_template(['doccheck-protected.php'])) {
+                return;
+            }
+
+            wp_enqueue_style(
+                    'doccheck-access-protected-fallback-style',
+                    DOCCHECK_ACCESS_PLUGIN_URL . 'assets/css/doccheck-login-protected-fallback.css',
+                    array(),
+                    DOCCHECK_ACCESS_VERSION
             );
         }
 
@@ -343,7 +455,7 @@ if (!class_exists('DocCheck_Login')) {
                     $theme_template = locate_template([$template_name]);
 
                     // 2. Fallback to plugin default
-                    $fallback_template = DOCCHECK_LOGIN_PLUGIN_PATH . 'templates/protected-fallback.php';
+                    $fallback_template = DOCCHECK_ACCESS_PLUGIN_PATH . 'templates/protected-fallback.php';
                     $target_template = $theme_template ? $theme_template : $fallback_template;
 
                     return apply_filters('doccheck_protected_template', $target_template);
@@ -479,13 +591,51 @@ if (!class_exists('DocCheck_Login')) {
          */
         public function clear_doccheck_session()
         {
-            if (session_status() === PHP_SESSION_NONE) {
-                session_start();
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                unset($_SESSION['doccheck_session_auth']);
+                unset($_SESSION['doccheck_session_data']);
+                unset($_SESSION['doccheck_session_time']);
+                return;
             }
 
-            unset($_SESSION['doccheck_session_auth']);
-            unset($_SESSION['doccheck_session_data']);
-            unset($_SESSION['doccheck_session_time']);
+            // Start only when a session already exists, so we don't create a new one on logout.
+            if (!headers_sent() && isset($_COOKIE[session_name()])) {
+                session_start();
+                unset($_SESSION['doccheck_session_auth']);
+                unset($_SESSION['doccheck_session_data']);
+                unset($_SESSION['doccheck_session_time']);
+            }
+        }
+
+        /**
+         * Register plugin privacy policy content for the Privacy Policy Guide.
+         *
+         * @since 1.0.0
+         */
+        public function add_privacy_policy_content()
+        {
+            if (!function_exists('wp_add_privacy_policy_content')) {
+                return;
+            }
+
+            $content = '<h2>' . esc_html__('DocCheck Login', 'doccheck-access') . '</h2>'
+                . '<p>' . esc_html__(
+                    'When a visitor logs in via DocCheck, this site receives profile data from the DocCheck API (such as unique ID, profession, country, and — if consented to — name, email address, and further fields). This data is stored as WordPress user meta and is used solely for authentication and access control.',
+                    'doccheck-access'
+                ) . '</p>'
+                . '<p>' . esc_html__(
+                    'In anonymous-session mode no persistent WordPress user record is created; data is held only for the duration of the PHP session.',
+                    'doccheck-access'
+                ) . '</p>'
+                . '<p>' . esc_html__(
+                    'Debug logging (when enabled) writes truncated OAuth tokens and session IDs to files in the uploads directory. Log files are automatically deleted after 30 days.',
+                    'doccheck-access'
+                ) . '</p>';
+
+            wp_add_privacy_policy_content(
+                __('DocCheck Login', 'doccheck-access'),
+                wp_kses_post($content)
+            );
         }
 
         /**
@@ -500,8 +650,11 @@ if (!class_exists('DocCheck_Login')) {
         public function handle_logout_redirect($redirect_to, $requested_redirect_to, $user)
         {
             if (!empty($requested_redirect_to)) {
-                // Prefer the explicitly requested redirect target when present
-                return $requested_redirect_to;
+                // Validate against allowed hosts before using the caller-supplied URL.
+                $validated = wp_validate_redirect($requested_redirect_to, '');
+                if ($validated) {
+                    return $validated;
+                }
             }
 
             // Fallback to WordPress' computed target (often login screen)

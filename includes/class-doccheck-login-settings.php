@@ -106,7 +106,16 @@ if (!class_exists('DocCheck_Login_Settings')) {
          * @access private
          * @var    string $authentication_mode Authentication mode ('anonymous_session' or 'wordpress_user')
          */
-        private $authentication_mode = 'wordpress_user';
+        private $authentication_mode = 'anonymous_session';
+
+        /**
+         * Whether first-time DocCheck logins may create local WordPress users.
+         *
+         * @since  2.4.1
+         * @access private
+         * @var    string $allow_user_creation 'on' or 'off'.
+         */
+        private $allow_user_creation = 'off';
 
         /**
          * Global protection: Make all Pages Private
@@ -491,6 +500,28 @@ if (!class_exists('DocCheck_Login_Settings')) {
         public function set_authentication_mode($authentication_mode)
         {
             $this->authentication_mode = $authentication_mode;
+        }
+
+        /**
+         * Check whether automatic local user creation is enabled.
+         *
+         * @return bool
+         * @since 2.4.1
+         */
+        public function get_allow_user_creation()
+        {
+            return $this->allow_user_creation === 'on';
+        }
+
+        /**
+         * Set automatic local user creation setting.
+         *
+         * @param string $value 'on' or 'off'
+         * @since 2.4.1
+         */
+        public function set_allow_user_creation($value)
+        {
+            $this->allow_user_creation = $value;
         }
 
         /**

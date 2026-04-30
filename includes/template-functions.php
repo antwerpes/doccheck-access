@@ -14,6 +14,32 @@ if ( ! defined( 'WPINC' ) ) {
     die;
 }
 
+if ( ! function_exists( 'doccheck_maybe_start_session' ) ) {
+    /**
+     * Start a session only when a DocCheck session cookie already exists.
+     *
+     * @since 2.4.1
+     *
+     * @return bool True when a session is active.
+     */
+    function doccheck_maybe_start_session() {
+        if ( session_status() === PHP_SESSION_ACTIVE ) {
+            return true;
+        }
+
+        if ( headers_sent() ) {
+            return false;
+        }
+
+        if ( ! isset( $_COOKIE[ session_name() ] ) ) {
+            return false;
+        }
+
+        session_start();
+        return session_status() === PHP_SESSION_ACTIVE;
+    }
+}
+
 if ( ! function_exists( 'doccheck_is_authenticated' ) ) {
     /**
      * Check whether the current visitor is authenticated via DocCheck.
@@ -37,6 +63,8 @@ if ( ! function_exists( 'doccheck_is_authenticated' ) ) {
                 $authenticated = true;
             }
         }
+
+        doccheck_maybe_start_session();
 
         // Check for DocCheck session.
         if ( ! $authenticated && isset( $_SESSION['doccheck_session_auth'] ) && $_SESSION['doccheck_session_auth'] === true ) {
@@ -85,6 +113,8 @@ if ( ! function_exists( 'doccheck_get_user_data' ) ) {
                 return apply_filters( 'doccheck_user_data', $user_data );
             }
         }
+
+        doccheck_maybe_start_session();
 
         // For session users.
         if ( isset( $_SESSION['doccheck_session_auth'] ) && $_SESSION['doccheck_session_auth'] === true ) {

@@ -125,6 +125,40 @@
     font-weight: 600;
 }
 
+.doccheck-scopes-matrix {
+    margin-top: 10px;
+}
+
+.doccheck-scopes-matrix .scope-checkbox {
+    width: 60px;
+    text-align: center;
+}
+
+.doccheck-scopes-matrix .scope-name {
+    width: 120px;
+}
+
+.doccheck-scopes-matrix .scope-license {
+    width: 100px;
+}
+
+.doccheck-scopes-matrix .required {
+    color: #d63638;
+}
+
+.property-list.disabled {
+    opacity: 0.5;
+}
+
+.property-item {
+    margin-bottom: 5px;
+}
+
+.property-item label small {
+    color: #666;
+    font-style: italic;
+}
+
 /* Documentation Tab */
 .doccheck-access-docs {
     border: none;
