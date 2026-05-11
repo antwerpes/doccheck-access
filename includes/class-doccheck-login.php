@@ -3,23 +3,22 @@
  * The main plugin class
  *
  * @since      1.0.0
- * @package    DocCheck_Login
+ * @package    DocAcc
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-if (!class_exists('DocCheck_Login')) {
-    class DocCheck_Login
-    {
+class DocAcc
+{
 
         /**
          * Plugin settings
          *
          * @since  1.0.0
          * @access protected
-         * @var    DocCheck_Login_Settings $settings The plugin settings.
+         * @var    DocAcc_Settings $settings The plugin settings.
          */
         protected $settings;
 
@@ -28,7 +27,7 @@ if (!class_exists('DocCheck_Login')) {
          *
          * @since  1.0.0
          * @access protected
-         * @var    DocCheck_Login_OAuth $oauth The OAuth handler.
+         * @var    DocAcc_OAuth $oauth The OAuth handler.
          */
         protected $oauth;
 
@@ -52,10 +51,10 @@ if (!class_exists('DocCheck_Login')) {
             $this->load_dependencies();
 
             // Initialize settings from WordPress options
-            $this->settings = new DocCheck_Login_Settings(get_option('doccheck_login_settings', []));
+            $this->settings = new DocAcc_Settings(get_option('docacc_settings', []));
 
             // Initialize OAuth handler
-            $this->oauth = new DocCheck_Login_OAuth($this->settings);
+            $this->oauth = new DocAcc_OAuth($this->settings);
         }
 
         /**
@@ -66,11 +65,11 @@ if (!class_exists('DocCheck_Login')) {
         private function load_dependencies()
         {
             // Load the settings class
-            require_once DOCCHECK_ACCESS_PLUGIN_PATH . 'includes/class-doccheck-login-settings.php';
+            require_once DOCACC_PLUGIN_PATH . 'includes/class-doccheck-login-settings.php';
 
             // Load admin functionality in admin area
             if (is_admin()) {
-                require_once DOCCHECK_ACCESS_PLUGIN_PATH . 'admin/class-doccheck-login-admin.php';
+                require_once DOCACC_PLUGIN_PATH . 'admin/class-doccheck-login-admin.php';
             }
         }
 
@@ -94,8 +93,8 @@ if (!class_exists('DocCheck_Login')) {
             // Handle OAuth callback
             add_action('parse_request', [$this, 'handle_oauth_callback']);
 
-            // Clear DocCheck session on logout
-            add_action('wp_logout', [$this, 'clear_doccheck_session']);
+            // Clear DocCheck session on logout.
+            add_action('wp_logout', [$this, 'clear_docacc_session']);
         }
 
         /**
@@ -107,7 +106,7 @@ if (!class_exists('DocCheck_Login')) {
         {
             if (is_admin()) {
                 // Pass settings object to admin class
-                $admin = new DocCheck_Login_Admin($this->settings);
+                $admin = new DocAcc_Admin($this->settings);
                 add_action('admin_menu', [$admin, 'add_admin_menu']);
                 add_action('admin_init', [$admin, 'register_settings']);
             }
@@ -121,10 +120,10 @@ if (!class_exists('DocCheck_Login')) {
         private function define_public_hooks()
         {
             // Register shortcodes
-            add_shortcode('doccheck_login', [$this, 'login_shortcode']);
-            add_shortcode('dc-hide-content', [$this, 'hide_content_shortcode']);
-            add_shortcode('dc_logout', [$this, 'logout_shortcode']);
-            add_shortcode('dc_sitemap', [$this, 'sitemap_shortcode']);
+            add_shortcode('docacc_login', [$this, 'login_shortcode']);
+            add_shortcode('docacc_hide_content', [$this, 'hide_content_shortcode']);
+            add_shortcode('docacc_logout', [$this, 'logout_shortcode']);
+            add_shortcode('docacc_sitemap', [$this, 'sitemap_shortcode']);
 
             // Script is enqueued on demand inside login_shortcode() and protect_page_content().
 
@@ -147,16 +146,7 @@ if (!class_exists('DocCheck_Login')) {
          */
         public function add_rewrite_rules()
         {
-            // macht get_query_var('doccheck') öffentlich
-            add_rewrite_tag('%doccheck%', '([^&]+)');
-
-            // Regex mit Endanker ($) – matcht /doccheck/callback und /doccheck/callback/
-            add_rewrite_rule('^doccheck/callback/?$', 'index.php?doccheck=callback', 'top');
-
-            register_activation_hook(__FILE__, function () {
-                do_action('doccheck_login_init');        // stellt sicher, dass Regeln registriert sind
-                flush_rewrite_rules();    // schreibt sie in die DB
-            });
+            docacc_register_rewrite_rules();
         }
 
         /**
@@ -168,7 +158,7 @@ if (!class_exists('DocCheck_Login')) {
          */
         public function handle_oauth_callback($wp)
         {
-            if (isset($wp->query_vars['doccheck']) && $wp->query_vars['doccheck'] === 'callback') {
+            if (isset($wp->query_vars['docacc_oauth']) && $wp->query_vars['docacc_oauth'] === 'callback') {
                 $this->oauth->handle_callback();
                 exit;
             }
@@ -189,7 +179,7 @@ if (!class_exists('DocCheck_Login')) {
          * @return array Associative array of sanitized parameter names → escaped values.
          * @since 2.4.0
          */
-        public function dcl_get_sanitized_utm_parameters()
+        public function get_sanitized_utm_parameters()
         {
             $utm_parameters = array(
                 'utm_source',
@@ -216,7 +206,7 @@ if (!class_exists('DocCheck_Login')) {
             // phpcs:ignore WordPress.Security.NonceVerification.Recommended
             $is_valid_nonce = isset( $_GET['utm_nonce'] )
                 // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-                ? wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['utm_nonce'] ) ), 'dcl_utm_parameters' )
+                ? wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['utm_nonce'] ) ), 'docacc_utm_parameters' )
                 : false;
 
             foreach ( $utm_parameters as $param ) {
@@ -277,9 +267,9 @@ if (!class_exists('DocCheck_Login')) {
 
             // Capture tracking/UTM parameters present on the current page so they can
             // be re-attached to the destination URL after the OAuth round-trip.
-            $utm_params = $this->dcl_get_sanitized_utm_parameters();
+            $utm_params = $this->get_sanitized_utm_parameters();
 
-            // Custom app-state from the shortcode attribute (e.g. [doccheck_login state="bereich_orange"]).
+            // Custom app-state from the shortcode attribute (e.g. [docacc_login state="bereich_orange"]).
             // Per the Anleitung this value is used for post-login routing or context passing.
             // It is ALWAYS routed through the nonce system – never used as the raw OAuth state –
             // so the CSRF nonce transient is always created and the callback never rejects it.
@@ -382,7 +372,7 @@ if (!class_exists('DocCheck_Login')) {
                 'doccheck-access-button',
                 $script_url,
                 [],
-                DOCCHECK_ACCESS_VERSION,
+                DOCACC_VERSION,
                 true // Load in footer to avoid blocking page render.
             );
         }
@@ -405,9 +395,9 @@ if (!class_exists('DocCheck_Login')) {
 
             wp_enqueue_style(
                     'doccheck-access-protected-fallback-style',
-                    DOCCHECK_ACCESS_PLUGIN_URL . 'assets/css/doccheck-login-protected-fallback.css',
+                    DOCACC_PLUGIN_URL . 'assets/css/doccheck-login-protected-fallback.css',
                     array(),
-                    DOCCHECK_ACCESS_VERSION
+                    DOCACC_VERSION
             );
         }
 
@@ -455,10 +445,10 @@ if (!class_exists('DocCheck_Login')) {
                     $theme_template = locate_template([$template_name]);
 
                     // 2. Fallback to plugin default
-                    $fallback_template = DOCCHECK_ACCESS_PLUGIN_PATH . 'templates/protected-fallback.php';
+                    $fallback_template = DOCACC_PLUGIN_PATH . 'templates/protected-fallback.php';
                     $target_template = $theme_template ? $theme_template : $fallback_template;
 
-                    return apply_filters('doccheck_protected_template', $target_template);
+                    return apply_filters('docacc_protected_template', $target_template);
                 }, 99);
             }
         }
@@ -508,13 +498,13 @@ if (!class_exists('DocCheck_Login')) {
                 return true;
             }
 
-            if (get_post_meta($post_id, '_doccheck_protected', true)) {
+            if (get_post_meta($post_id, 'docacc_protected', true)) {
                 return true;
             }
 
             if ($this->settings->get_auto_assign_parent_config()) {
                 foreach (get_post_ancestors($post_id) as $ancestor_id) {
-                    if (get_post_meta($ancestor_id, '_doccheck_protected', true)) {
+                    if (get_post_meta($ancestor_id, 'docacc_protected', true)) {
                         return true;
                     }
                 }
@@ -567,14 +557,14 @@ if (!class_exists('DocCheck_Login')) {
          */
         private function get_effective_allowed_roles($post_id)
         {
-            $allowed_roles = get_post_meta($post_id, '_doccheck_allowed_roles', true);
+            $allowed_roles = get_post_meta($post_id, 'docacc_allowed_roles', true);
             if (is_array($allowed_roles) && !empty($allowed_roles)) {
                 return $allowed_roles;
             }
 
             if ($this->settings->get_auto_assign_parent_config()) {
                 foreach (get_post_ancestors($post_id) as $ancestor_id) {
-                    $ancestor_roles = get_post_meta($ancestor_id, '_doccheck_allowed_roles', true);
+                    $ancestor_roles = get_post_meta($ancestor_id, 'docacc_allowed_roles', true);
                     if (is_array($ancestor_roles) && !empty($ancestor_roles)) {
                         return $ancestor_roles;
                     }
@@ -589,21 +579,21 @@ if (!class_exists('DocCheck_Login')) {
          *
          * @since 2.1.0
          */
-        public function clear_doccheck_session()
+        public function clear_docacc_session()
         {
             if (session_status() === PHP_SESSION_ACTIVE) {
-                unset($_SESSION['doccheck_session_auth']);
-                unset($_SESSION['doccheck_session_data']);
-                unset($_SESSION['doccheck_session_time']);
+                unset($_SESSION['docacc_session_auth']);
+                unset($_SESSION['docacc_session_data']);
+                unset($_SESSION['docacc_session_time']);
                 return;
             }
 
             // Start only when a session already exists, so we don't create a new one on logout.
             if (!headers_sent() && isset($_COOKIE[session_name()])) {
                 session_start();
-                unset($_SESSION['doccheck_session_auth']);
-                unset($_SESSION['doccheck_session_data']);
-                unset($_SESSION['doccheck_session_time']);
+                unset($_SESSION['docacc_session_auth']);
+                unset($_SESSION['docacc_session_data']);
+                unset($_SESSION['docacc_session_time']);
             }
         }
 
@@ -674,7 +664,7 @@ if (!class_exists('DocCheck_Login')) {
                 'post_type'      => '',
                 'show_protected' => '',
                 'depth'          => 0,
-                'exclude'        => '',
+                'exclude_ids' => '',
             ], $atts);
 
             // Determine whether to show protected pages
@@ -694,12 +684,12 @@ if (!class_exists('DocCheck_Login')) {
                 unset($post_types['attachment']);
             }
 
-            $exclude_ids = !empty($atts['exclude'])
-                ? array_map('intval', explode(',', $atts['exclude']))
+            $exclude_ids = !empty($atts['exclude_ids'])
+                ? array_map('intval', explode(',', $atts['exclude_ids']))
                 : [];
 
             $depth = intval($atts['depth']);
-            $html  = '<div class="dc-sitemap">';
+            $html  = '<div class="docacc-sitemap">';
 
             foreach ($post_types as $post_type) {
                 $type_obj = get_post_type_object($post_type);
@@ -722,6 +712,7 @@ if (!class_exists('DocCheck_Login')) {
                         'depth'     => $depth,
                     ];
                     if (!empty($type_exclude)) {
+                        // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_exclude -- Sitemap shortcode must omit protected/user-excluded hierarchical content.
                         $pages_args['exclude'] = implode(',', $type_exclude);
                     }
 
@@ -739,6 +730,7 @@ if (!class_exists('DocCheck_Login')) {
                         'post_status'    => 'publish',
                     ];
                     if (!empty($type_exclude)) {
+                        // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_post__not_in -- Sitemap shortcode must omit protected/user-excluded content.
                         $query_args['post__not_in'] = $type_exclude;
                     }
 
@@ -774,12 +766,14 @@ if (!class_exists('DocCheck_Login')) {
             $protected_ids = $this->get_protected_post_ids($post_type);
 
             if (!empty($protected_ids)) {
+                // phpcs:disable WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_post__not_in -- Protected content must be excluded from public XML sitemaps.
                 if (!isset($args['post__not_in'])) {
                     $args['post__not_in'] = [];
                 }
                 $args['post__not_in'] = array_unique(
                     array_merge($args['post__not_in'], $protected_ids)
                 );
+                // phpcs:enable WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_post__not_in
             }
 
             return $args;
@@ -819,6 +813,4 @@ if (!class_exists('DocCheck_Login')) {
 
             return $protected;
         }
-
-    }
 }

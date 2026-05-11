@@ -5,7 +5,7 @@
  * This template is used when the current page is DocCheck protected
  * and the theme does not provide a custom 'doccheck-protected.php' template.
  *
- * @package DocCheck_Login
+ * @package DocAcc
  */
 
 // Prevent direct file access.
@@ -28,9 +28,9 @@ get_header(); ?>
                 </div>
                 <?php
                 // We use the shortcode logic to render the button
-                $doccheck_login = new DocCheck_Login();
+                $docacc_login = new DocAcc();
                 echo wp_kses(
-                    $doccheck_login->login_shortcode( [ 'samepageredirect' => '1' ] ),
+                    $docacc_login->login_shortcode( [ 'samepageredirect' => '1' ] ),
                     [
                         'div'             => [
                             'class' => true,

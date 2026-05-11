@@ -1,261 +1,345 @@
-=== DocCheck Access ===
-Contributors: DocCheck agency
-Tags: DocCheck, login, medical, hcp, authentication
+=== DocCheck Login ===
+Contributors: doccheck
+Tags: login, authentication, oauth, doccheck, medical
 Requires at least: 5.0
 Tested up to: 6.9
-Stable tag: 1.0.2
-Requires PHP: 7.2
+Stable tag: 1.0.3
 License: GPLv2 or later
-License URI: https://www.gnu.org/licenses/gpl-2.0.html
+License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
 Integrate DocCheck OAuth2 login functionality into your WordPress site.
 
 == Description ==
 
-The DocCheck Access plugin integrates DocCheck's OAuth2 authentication system into your WordPress site, allowing medical professionals to log in using their DocCheck credentials.
+The DocCheck Login plugin integrates DocCheck's OAuth2 authentication system into your WordPress site, allowing medical professionals to log in using their DocCheck credentials.
 
 = Features =
 
-* Adds a DocCheck login button via shortcode or automatic page-level protection
-* OAuth 2.0 Authorization Code flow with PKCE for secure authentication
+* Adds a "Login with DocCheck" button to the WordPress login page
+* Provides shortcodes for embedding login functionality anywhere:
+  * [docacc_login] - Displays the DocCheck login button
+  * [docacc_hide_content] - Protects content for logged-in users only
+  * [docacc_logout] - Provides a logout link
+  * [docacc_sitemap] - Renders an HTML sitemap with automatic protection filtering
+* Implements OAuth 2.0 Authorization Code flow with PKCE for secure authentication
+* Retrieves user data from DocCheck API using access tokens
 * Two authentication modes: Anonymous Session and WordPress User creation
-* Per-page and global content protection with role-based access control
-* Configurable scope and user metadata mapping
+* Creates new WordPress users when a DocCheck user logs in for the first time
+* Maps DocCheck user roles to WordPress roles
+* Enhanced User Management with configurable fallback options for missing data
+* Extended metadata mapping for all available DocCheck scopes
+* Advanced logging for API endpoints with session tracking and data protection
 * Template override support for protected pages
-* Hooks and filters for developers to customize behavior
-
-= External Services =
-
-This plugin connects to the following external services:
-
-**DocCheck OAuth Server** (`https://auth.doccheck.com`)
-
-Used to exchange the OAuth authorization code for an access token and to retrieve the authenticated user's profile data. This connection is only made when a visitor actively clicks the DocCheck login button. Please refer to the [DocCheck Privacy Policy](https://www.doccheck.com/privacy) and [DocCheck Terms of Service](https://www.doccheck.com/terms).
-
-**DocCheck CDN** (`https://dccdn.de`)
-
-The DocCheck login button is a web component whose script is served from DocCheck's CDN. It is loaded only on pages where the `[doccheck_login]` shortcode or page-level protection is active — not on every page. Please refer to the [DocCheck Privacy Policy](https://www.doccheck.com/privacy).
-
-No data is transmitted to any other third-party service.
+* Global page protection and inheritance settings
+* Includes hooks for developers to customize behavior
+* Template functions for theme developers to detect DocCheck authentication in PHP
 
 = Requirements =
 
 * WordPress 5.0 or higher
-* PHP 7.2 or higher
-* A DocCheck OAuth client ID and client secret (obtainable from DocCheck)
-
-= General Settings =
-
-Go to **Settings > DocCheck Login** in your WordPress admin to configure the plugin.
-
-**OAuth Credentials**
-
-* **Client ID** — Your DocCheck OAuth Client ID.
-* **Client Secret** — Your DocCheck OAuth Client Secret.
-* **Redirect URI** — Auto-generated based on your site URL. Copy this value into your DocCheck application settings.
-
-**Redirection & Debug**
-
-* **Default Target Page** — The page users land on after a successful login.
-* **Debug Mode** — Logs detailed API and authentication information. Disable on production sites.
-
-**Content Protection**
-
-* **Make all Pages Private** — Requires DocCheck login for every page on the site.
-* **Auto-assign Parent Configurations** — Child pages automatically inherit their parent page's protection status.
-* **Login Button Version** — Pin a specific component version (e.g. `3.2.7`) or use `@latest` to always load the most recent version.
-
-= User Management =
-
-**Authentication Modes**
-
-* **Anonymous Session** — Users are authenticated via DocCheck but no WordPress user account is created. Data is held only for the duration of the PHP session and is not stored permanently.
-* **WordPress User** — A WordPress user account is created or linked on the visitor's first DocCheck login. Allows persistent storage of user properties and role-based access control.
-
-**Role & Metadata**
-
-* **Default User Role** — The WordPress role assigned to newly created DocCheck users. Only low-privilege roles (those without `manage_options` or `edit_others_posts` capabilities) are available for selection. Administrator and Editor roles cannot be assigned to DocCheck users.
-* **Automatic User Creation** — Disabled by default. In WordPress User mode, local user creation for first-time DocCheck logins must be explicitly enabled by an administrator.
-* **Scope & Property Selection** — Choose which DocCheck scopes to request and which user properties to store as WordPress user metadata.
-
-= Shortcodes =
-
-**[doccheck_login]**
-
-Displays the DocCheck login button.
-
-Attributes:
-
-* `size` — Button size: `small`, `medium` (default), `large`
-* `language` — Language code, e.g. `en`, `de` (default: WordPress locale)
-* `state` — Custom app-state value, passed back as `?state=` after login
-* `scope` — OAuth scope override (default: from plugin settings)
-* `samepageredirect` — Redirect back to the current page after login: `0` (default) or `1`
-
-Examples:
-
-    [doccheck_login size="large" language="en"]
-    [doccheck_login samepageredirect="1"]
-
-**[dc-hide-content]**
-
-Hides content so it is only visible to authenticated DocCheck users.
-
-    [dc-hide-content]
-    This content is only visible to logged-in DocCheck users.
-    [/dc-hide-content]
-
-**[dc_logout]**
-
-Displays a logout link for authenticated users.
-
-Attribute:
-
-* `redirect` — URL to redirect to after logout (default: home page)
-
-    [dc_logout redirect="https://example.com/thank-you"]
-
-**[dc_sitemap]**
-
-Renders an HTML sitemap that automatically hides protected pages from unauthenticated visitors.
-
-Attributes:
-
-* `post_type` — Comma-separated post type slugs (default: all public types)
-* `show_protected` — `yes`, `no`, or `auto` (default: based on current authentication status)
-* `depth` — Hierarchy depth limit, `0` = unlimited (default)
-* `exclude` — Comma-separated post IDs to exclude
+* PHP 5.6 or higher
+* A DocCheck OAuth client ID and client secret
 
 == Installation ==
 
-1. Upload the `doccheck-access` folder to the `/wp-content/plugins/` directory.
-2. Activate the plugin through the **Plugins** menu in WordPress.
-3. Go to **Settings > DocCheck Login** and enter your DocCheck OAuth credentials.
-4. Copy the displayed **Redirect URI** into your DocCheck application settings.
-5. Add `[doccheck_login]` to any page or post where you want the login button to appear.
+1. Upload the `doccheck-access` folder to the `/wp-content/plugins/` directory
+2. Activate the plugin through the 'Plugins' menu in WordPress
+3. Go to Settings > DocCheck Login to configure your DocCheck OAuth credentials
+4. Add the shortcodes to any page or post where you want to use DocCheck Login functionality
+5. Check out the "Documentation" Tab on the settings page for further guidance
+
+== General Settings ==
+
+To access the settings, go to **Settings > DocCheck Login** in your WordPress admin.
+
+= OAuth Credentials =
+
+* **Client ID**: Your DocCheck OAuth Client ID.
+* **Client Secret**: Your DocCheck OAuth Client Secret.
+* **Redirect URI**: This field displays the URI you must enter in your DocCheck Application settings. It is automatically generated based on your site's URL.
+
+= Redirection & Debug =
+
+* **Default Target Page**: The page where users will be redirected after a successful login if no specific redirect is provided via shortcode.
+* **Debug Mode**: When enabled, the plugin logs detailed information about API requests and authentication errors to the WordPress error log.
+
+= Content Protection =
+
+* **Global Settings for all Pages**: If "Make all Pages Private" is enabled, every page on your site will require a DocCheck login by default.
+* **Inheritance**: If "Auto-assign Parent Configurations" is enabled, child pages will automatically inherit the protection status from their parent page.
+* **Login Button Version**: Specify a specific version of the DocCheck Login Button (e.g., "3.2.7") or use "@latest" (default) to always load the most recent version.
+
+== User Management ==
+
+The User Management tab allows you to control how DocCheck users are handled by WordPress.
+
+= Authentication Modes =
+
+* **Anonymous Session**: Users are authenticated via DocCheck, but no WordPress user account is created. User data is available only during the current session and is not stored permanently.
+* **WordPress User**: A WordPress user account is created or linked for each DocCheck user upon their first login. This allows you to store user properties and manage permissions more effectively.
+
+= Role & Metadata =
+
+* **Default User Role**: Choose the default WordPress role assigned to new users created via DocCheck.
+* **Scope & Property Selection**: A matrix that allows you to select which DocCheck scopes to request and which specific user properties should be stored as WordPress user metadata.
 
 == Frequently Asked Questions ==
 
 = How do I get DocCheck OAuth credentials? =
 
-Contact DocCheck to register your application and obtain a client ID and client secret.
+You need to contact DocCheck to obtain your OAuth client ID and client secret.
 
 = Can I customize the appearance of the login button? =
 
-Yes. The `[doccheck_login]` shortcode accepts a `size` attribute (`small`, `medium`, `large`). You can also apply custom CSS to the `dc-login-button` element.
+Yes, the plugin uses DocCheck's official login button component which supports various size options. You can also customize the appearance with CSS.
 
-= How does user creation work? =
+= How does user mapping work? =
 
-In WordPress User mode, a new account is created on the visitor's first DocCheck login. The DocCheck unique ID is stored as user meta (`doccheck_unique_id`) and used to match subsequent logins to the same account.
+When a DocCheck user logs in for the first time, the plugin creates a new WordPress user with the default role specified in the plugin settings. The DocCheck unique ID is stored as user meta data.
 
-= Can I map DocCheck user types to specific WordPress roles? =
+= Can I map specific DocCheck user types to specific WordPress roles? =
 
-Yes. Use the `doccheck_login_map_role` filter:
+Yes, you can use the `docacc_map_role` filter to customize the role mapping based on DocCheck user data.
 
-    add_filter( 'doccheck_login_map_role', function( $role, $user_data, $user_id ) {
-        if ( isset( $user_data['profession'] ) && $user_data['profession'] === 'physician' ) {
-            return 'editor';
-        }
-        return $role;
-    }, 10, 3 );
+== Screenshots ==
 
-= How do I protect a single page? =
-
-Edit the page in the WordPress admin. A **DocCheck Protection** metabox appears in the sidebar — check **Protect this page** and save.
-
-= Can I protect all pages at once? =
-
-Yes. Enable **Make all Pages Private** under **Settings > DocCheck Login**.
-
-== Other Notes ==
-
-= Developer Hooks =
-
-**Actions**
-
-* `doccheck_login_user_created` — Fires after a new WordPress user is created via DocCheck login.
-  Parameters: `$user_id` (int), `$user_data` (array)
-
-* `doccheck_login_user_logged_in` — Fires when an existing user logs in via DocCheck.
-  Parameters: `$user_id` (int), `$user_data` (array)
-
-* `doccheck_login_session_created` — Fires when a user is authenticated in anonymous session mode.
-  Parameters: `$user_data` (array)
-
-**Filters**
-
-* `doccheck_login_map_role` — Customize role assignment based on DocCheck user data.
-  Parameters: `$current_role` (string), `$user_data` (array), `$user_id` (int)
-  Note: roles with `manage_options` or `edit_others_posts` capabilities are silently rejected for security reasons.
-
-* `doccheck_protected_template` — Override the template used for protected pages.
-  Parameters: `$template` (string)
-
-* `doccheck_is_authenticated` — Override the authentication check result.
-  Parameters: `$authenticated` (bool)
-
-* `doccheck_user_data` — Modify the DocCheck user data array before it is used.
-  Parameters: `$user_data` (array)
-
-= Template Functions =
-
-    // Check if the current visitor is authenticated via DocCheck
-    doccheck_is_authenticated(); // returns bool
-
-    // Get the authenticated user's DocCheck profile fields
-    doccheck_get_user_data(); // returns array, empty if not authenticated
-
-Example in a theme template:
-
-    <?php if ( function_exists( 'doccheck_is_authenticated' ) && doccheck_is_authenticated() ) : ?>
-        <div class="hcp-content">Visible only to DocCheck users.</div>
-    <?php else : ?>
-        <?php echo do_shortcode( '[doccheck_login]' ); ?>
-    <?php endif; ?>
-
-= Custom Protected Page Template =
-
-Create `doccheck-protected.php` in your active theme directory — the plugin uses it automatically. Or override via filter:
-
-    add_filter( 'doccheck_protected_template', function( $template ) {
-        return get_stylesheet_directory() . '/my-protected-template.php';
-    } );
-
-= User Metadata Stored =
-
-In WordPress User mode, the following meta fields are stored per user (subject to selected scopes):
-
-* `doccheck_unique_id` — DocCheck unique identifier (always stored)
-* `doccheck_profession` — Profession name
-* `doccheck_country` — Country ISO code
-* `doccheck_language` — Interface language
-* `first_name`, `last_name` — Name fields
-* `doccheck_email` — Email address
-* `doccheck_discipline_name` — Medical discipline
-* `doccheck_activity_name` — Activity type
-* `doccheck_area_code`, `doccheck_street`, `doccheck_city`, `doccheck_state` — Address fields
-* `doccheck_last_login` — Timestamp of last DocCheck login
+1. DocCheck Login button on WordPress login page
+2. Admin settings page
+3. Shortcode usage example
 
 == Changelog ==
 
-= 1.0.2 =
-* Security: Restricted the Default User Role dropdown to low-privilege roles only (excludes roles with `manage_options` or `edit_others_posts`).
-* Security: Added server-side validation in `validate_settings()` to reject high-privilege roles even if submitted directly.
-* Security: The `doccheck_login_map_role` filter result is now validated before `set_role()` is called, preventing privilege escalation via custom filter callbacks.
-* Security: Added explicit opt-in for automatic local user creation (`allow_user_creation`), defaulted to off, and defaulted new installs to Anonymous Session mode.
+= 1.0.3 =
+* Review fix: Renamed plugin-owned global identifiers to the unique `docacc` prefix, including functions, classes, constants, options, hooks, transients, session keys, user meta keys, role slug, and shortcodes.
+* Review fix: Replaced shortcodes with `[docacc_login]`, `[docacc_hide_content]`, `[docacc_logout]`, and `[docacc_sitemap]`.
+* Review fix: Removed plugin-owned `class_exists()` and `function_exists()` wrappers to avoid silent conflicts with other plugins or themes.
+* Review fix: Updated the OAuth callback query var, settings option, admin documentation, developer hooks, and examples to use the `docacc` prefix consistently.
+* Compatibility: Added idempotent settings initialization so the renamed settings option is created safely during updates as well as new activations.
 
-= 1.0.1 =
-* Review fix: Replaced inline `<script>` and `<style>` output with proper WordPress enqueue APIs.
-* Added admin JavaScript through `admin_enqueue_scripts` + `wp_add_inline_script()` for settings tabs, scope/property matrix behavior, redirect URI copy button, and metabox role toggle.
-* Moved matrix CSS and protected fallback template CSS into enqueued stylesheet assets.
-* Review fix: Updated `register_setting()` arguments and adjusted `client_secret` sanitization to use a dedicated secret-safe callback instead of generic text-field sanitization.
-* Review fix: Escaped shortcode callback return output for `dc_logout` and sanitized rendered `dc-hide-content` output with `wp_kses_post()`.
-* Review fix: Removed global session start behavior and introduced lazy, cookie-aware session initialization only in DocCheck authentication/session contexts.
+= 2.1.3 =
+* Added template functions for theme developers: `docacc_is_authenticated()` and `docacc_get_user_data()`
+* Added `docacc_is_authenticated` filter to override authentication checks
+* Added `docacc_user_data` filter to modify returned user data
+* Added Template Functions documentation section in admin settings
+* Security: enabled SSL certificate verification for all DocCheck API requests
+* Security: state parameter is now required on OAuth callback (CSRF protection)
+* Security: logout redirect URL is validated before use (prevents open redirect)
+* Privacy: plugin now registers its data-collection description in the WordPress Privacy Policy Guide
+* Performance: DocCheck login button script is only loaded on pages that render the login button
+
+= 1.4.0 =
+* Added support for overriding the DocCheck protected content template
+* Added `doccheck-protected.php` theme template support
+* Added `docacc_protected_template` filter for developers
+
+= 1.3.0 =
+* Added Enhanced User Management with fallback options for missing data
+* Added configurable fallback behavior (session-only, or create with defaults)
+* Enhanced metadata mapping for all available DocCheck scopes
+* Added field visibility and mapping documentation in admin interface
+* Added automatic splitting of full name into first and last name components
+* Added special handling for address fields and complex data types
+
+= 1.2.0 =
+* Added advanced logging functionality for token and userdata endpoints
+* Implemented session ID tracking for better request tracing
+* Added proper obfuscation of sensitive data in logs (only first 15 chars shown)
+* Logs are now stored in separate files by endpoint type and date
+* Added automatic log rotation (logs older than 30 days are removed)
+* Enhanced security with protected log directory
+
+= 1.1.0 =
+* Added enhanced state parameter with encrypted redirect URL support
+* Added samepageredirect attribute to [docacc_login] shortcode
+* Fixed state validation in OAuth callback handling
+* Improved redirect handling after authentication
 
 = 1.0.0 =
-* Initial release.
+* Initial release
 
 == Upgrade Notice ==
 
+= 1.0.3 =
+Shortcodes and developer-facing identifiers now use the `docacc` prefix. Update any content or custom code that referenced older shortcode or hook names.
+
+= 1.5.0 =
+This update adds global PHP template functions (`docacc_is_authenticated()` and `docacc_get_user_data()`) so theme developers can detect DocCheck authentication directly in PHP templates without relying on shortcodes.
+
+= 1.4.0 =
+This update allows developers to customize the appearance of protected pages by creating a `doccheck-protected.php` file in their theme or using the `docacc_protected_template` filter.
+
+= 1.3.0 =
+This update adds Enhanced User Management with configurable fallback options for missing user data. It also improves metadata mapping for all DocCheck scopes and adds field visibility documentation in the admin interface.
+
+= 1.2.0 =
+This update adds advanced logging for API endpoints with better security, session tracking, and log rotation. Debug logs are now organized by endpoint type and include better protection of sensitive data.
+
+= 1.1.0 =
+This update adds the ability to redirect users back to the original page after login. Use the samepageredirect="1" attribute with the [docacc_login] shortcode.
+
 = 1.0.0 =
-Initial release.
+Initial release
+
+== Shortcodes Usage ==
+
+= [docacc_login] =
+
+This shortcode displays the DocCheck login button. It can be used on any page or post.
+
+**Attributes:**
+
+* `size` - The size of the login button (default: "medium")
+  * Possible values: "small", "medium", "large"
+* `language` - The language code for the button (default: WordPress locale)
+  * Example: "en", "de"
+* `state` - Custom state parameter for OAuth flow (default: auto-generated)
+* `scope` - Custom scope parameter for OAuth permissions (default: from plugin settings)
+* `samepageredirect` - Whether to redirect back to the current page after login (default: "0")
+  * Possible values: "0" (disabled), "1" (enabled)
+
+**Examples:**
+
+`[docacc_login size="large" language="en"]`
+
+`[docacc_login samepageredirect="1"]` - Redirects back to the current page after login
+
+= [docacc_hide_content] =
+
+This shortcode hides content so that it's only visible to logged-in users. Content between the opening and closing shortcode tags will be protected.
+
+**Example:**
+
+`[docacc_hide_content]
+This content is only visible to logged-in DocCheck users.
+[/docacc_hide_content]`
+
+= [docacc_logout] =
+
+This shortcode displays a logout link for users who are currently logged in.
+
+**Attributes:**
+
+* `redirect` - URL to redirect to after logout (default: home page URL)
+
+**Example:**
+
+`[docacc_logout redirect="https://example.com/thank-you"]`
+
+= [docacc_sitemap] =
+
+Renders an HTML sitemap that automatically hides protected pages from unauthenticated visitors. It also filters the WordPress XML sitemap to exclude protected pages from search engines.
+
+**Attributes:**
+
+* `post_type` - Comma-separated list of post types to include (default: all public post types)
+* `show_protected` - Override visibility of protected pages. "yes" = always show, "no" = always hide (default: "auto" - shows if authenticated, hides if not)
+* `depth` - Maximum hierarchy depth for pages (default: "0" = unlimited)
+* `exclude` - Comma-separated post IDs to exclude from the sitemap
+
+**Examples:**
+
+`[docacc_sitemap]`
+
+`[docacc_sitemap post_type="page" depth="2"]`
+
+`[docacc_sitemap post_type="page,post" exclude_ids="42,99"]`
+
+== Developer Documentation ==
+
+= Hooks and Filters =
+
+The following hooks and filters are available for developers:
+
+**Actions:**
+
+* `docacc_user_created` - Fires after a new user is created via DocCheck login
+  * Parameters: `$user_id` (int), `$user_data` (array)
+* `docacc_user_logged_in` - Fires when an existing user logs in via DocCheck
+  * Parameters: `$user_id` (int), `$user_data` (array)
+* `docacc_session_created` - Fires when a user is authenticated via anonymous session mode
+  * Parameters: `$user_data` (array)
+
+**Filters:**
+
+* `docacc_map_role` - Filter to customize user role based on DocCheck data
+  * Parameters: `$current_role` (string), `$user_data` (array), `$user_id` (int)
+  * Return: New role (string) or current role if no change
+* `docacc_protected_template` - Filter to customize the path to the template used for protected pages
+  * Parameters: `$template` (string) - Full path to the current template file
+  * Return: New template path (string)
+* `docacc_is_authenticated` - Filter to override the DocCheck authentication check
+  * Parameters: `$authenticated` (bool)
+  * Return: Boolean
+* `docacc_user_data` - Filter to modify the DocCheck user data array
+  * Parameters: `$user_data` (array)
+  * Return: Modified array
+
+== Customizing Protected Content Template ==
+
+The plugin provides a default template for pages that are DocCheck protected. You can customize this in two ways:
+
+1. **Theme Template File**:
+Create a file named `doccheck-protected.php` in your active theme's root directory. The plugin will automatically use this file instead of the default one.
+
+2. **WordPress Filter**:
+Use the `docacc_protected_template` filter in your theme's `functions.php` to programmatically change the path to the template file.
+
+**Example:**
+```php
+add_filter('docacc_protected_template', function($template) {
+    // Return custom path to your template
+    return get_stylesheet_directory() . '/my-custom-protection-template.php';
+});
+```
+
+= Template Functions =
+
+The following global PHP functions are available for use in theme templates:
+
+* `docacc_is_authenticated()` - Returns `true` if the current visitor is authenticated via DocCheck (works in both wordpress_user and anonymous_session modes)
+* `docacc_get_user_data()` - Returns an associative array of DocCheck user fields (prefix-stripped_keys), or an empty array for unauthenticated visitors
+
+**Example:**
+```php
+<?php if ( docacc_is_authenticated() ) : ?>
+    <div class="hcp-only">Visible only to DocCheck users</div>
+<?php else : ?>
+    <p>Please log in with DocCheck.</p>
+    <?php echo do_shortcode( '[docacc_login]' ); ?>
+<?php endif; ?>
+```
+
+= User Meta Data =
+
+The plugin stores the following user meta data for each DocCheck user:
+
+**Basic Fields:**
+* `docacc_unique_id` - Unique identifier for the DocCheck user
+* `docacc_profession` - User's profession
+* `docacc_specialty` - User's medical specialty
+* `docacc_country` - User's country
+* `docacc_language` - User's language
+
+**Extended Fields:**
+* `docacc_name` - User's full name
+* `docacc_email` - User's email address
+* `docacc_occupation_detail` - Detailed occupation information
+* `docacc_address` - User's address (serialized)
+* `docacc_gender` - User's gender
+* `docacc_title` - User's title (Dr., Prof., etc.)
+* `docacc_preferred_language` - User's preferred language
+
+**WordPress Core Fields (automatically mapped):**
+* `first_name` - Extracted from full name when possible
+* `last_name` - Extracted from full name when possible
+
+**Address Components (when address data is available):**
+* `docacc_address_street` - Street address
+* `docacc_address_city` - City
+* `docacc_address_zip` - ZIP/Postal code
+* `docacc_address_country` - Country code
+
+**Special Fields:**
+* `docacc_last_login` - Timestamp of the user's last login via DocCheck
+* `docacc_created_with_defaults` - Indicates if user was created with default values
+* `docacc_userdata` - Full serialized response from the DocCheck API

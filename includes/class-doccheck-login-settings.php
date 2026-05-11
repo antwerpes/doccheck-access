@@ -3,12 +3,11 @@
  * Class for encapsulating plugin settings
  *
  * @since      1.0.0
- * @package    DocCheck_Login
+ * @package    DocAcc
  */
 
-if (!class_exists('DocCheck_Login_Settings')) {
-    class DocCheck_Login_Settings
-    {
+class DocAcc_Settings
+{
         /**
          * DocCheck OAuth Client ID
          *
@@ -705,5 +704,4 @@ if (!class_exists('DocCheck_Login_Settings')) {
         {
             return property_exists($this, $name) && isset($this->$name);
         }
-    }
 }

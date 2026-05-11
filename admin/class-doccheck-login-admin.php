@@ -3,31 +3,29 @@
  * The admin-specific functionality of the plugin
  *
  * @since      1.0.0
- * @package    DocCheck_Login
+ * @package    DocAcc
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-if (!class_exists('DocCheck_Login_Admin')) {
-
-    class DocCheck_Login_Admin
-    {
+class DocAcc_Admin
+{
 
         /**
          * Plugin settings
          *
          * @since  1.0.0
          * @access private
-         * @var    DocCheck_Login_Settings $settings The plugin settings.
+         * @var    DocAcc_Settings $settings The plugin settings.
          */
         private $settings;
 
         /**
          * Initialize the class
          *
-         * @param DocCheck_Login_Settings $settings Plugin settings.
+         * @param DocAcc_Settings $settings Plugin settings.
          * @since 1.0.0
          */
         public function __construct($settings)
@@ -44,21 +42,21 @@ if (!class_exists('DocCheck_Login_Admin')) {
             if ('settings_page_doccheck-access' === $hook) {
                 wp_enqueue_style(
                         'doccheck-access-admin-style',
-                        DOCCHECK_ACCESS_PLUGIN_URL . 'assets/css/doccheck-login-admin.css',
+                        DOCACC_PLUGIN_URL . 'assets/css/doccheck-login-admin.css',
                         array(),
-                        DOCCHECK_ACCESS_VERSION
+                        DOCACC_VERSION
                 );
 
                 wp_enqueue_script(
                         'doccheck-access-admin-script',
-                        DOCCHECK_ACCESS_PLUGIN_URL . 'assets/js/doccheck-login-admin-settings.js',
+                        DOCACC_PLUGIN_URL . 'assets/js/doccheck-login-admin-settings.js',
                         array('jquery'),
-                        DOCCHECK_ACCESS_VERSION,
+                        DOCACC_VERSION,
                         true
                 );
                 wp_add_inline_script(
                         'doccheck-access-admin-script',
-                        'window.doccheckAccessAdmin = ' . wp_json_encode(
+                        'window.docaccAdmin = ' . wp_json_encode(
                                 array(
                                         'copiedText' => __('Copied!', 'doccheck-access'),
                                 )
@@ -70,9 +68,9 @@ if (!class_exists('DocCheck_Login_Admin')) {
             if (in_array($hook, array('post.php', 'post-new.php'), true)) {
                 wp_enqueue_script(
                         'doccheck-access-post-editor-script',
-                        DOCCHECK_ACCESS_PLUGIN_URL . 'assets/js/doccheck-login-admin-post-editor.js',
+                        DOCACC_PLUGIN_URL . 'assets/js/doccheck-login-admin-post-editor.js',
                         array(),
-                        DOCCHECK_ACCESS_VERSION,
+                        DOCACC_VERSION,
                         true
                 );
             }
@@ -102,8 +100,8 @@ if (!class_exists('DocCheck_Login_Admin')) {
         public function register_settings()
         {
             register_setting(
-                    'doccheck_login_settings',
-                    'doccheck_login_settings',
+                    'docacc_settings',
+                    'docacc_settings',
                     array(
                             'type' => 'array',
                             'sanitize_callback' => array($this, 'validate_settings'),
@@ -130,10 +128,10 @@ if (!class_exists('DocCheck_Login_Admin')) {
 
             // General section
             add_settings_section(
-                    'doccheck_login_general_section',
+                    'docacc_general_section',
                     __('General Settings', 'doccheck-access'),
                     array($this, 'display_general_section'),
-                    'doccheck_login_general_settings'
+                    'docacc_general_settings'
             );
 
             // OAuth Client settings
@@ -141,8 +139,8 @@ if (!class_exists('DocCheck_Login_Admin')) {
                     'client_id',
                     __('Client ID', 'doccheck-access'),
                     array($this, 'render_text_field'),
-                    'doccheck_login_general_settings',
-                    'doccheck_login_general_section',
+                    'docacc_general_settings',
+                    'docacc_general_section',
                     array(
                             'id' => 'client_id',
                             'description' => __('Your DocCheck OAuth Client ID', 'doccheck-access')
@@ -153,8 +151,8 @@ if (!class_exists('DocCheck_Login_Admin')) {
                     'client_secret',
                     __('Client Secret', 'doccheck-access'),
                     array($this, 'render_password_field'),
-                    'doccheck_login_general_settings',
-                    'doccheck_login_general_section',
+                    'docacc_general_settings',
+                    'docacc_general_section',
                     array(
                             'id' => 'client_secret',
                             'description' => __('Your DocCheck OAuth Client Secret', 'doccheck-access')
@@ -166,8 +164,8 @@ if (!class_exists('DocCheck_Login_Admin')) {
                     'redirect_uri_display',
                     __('Redirect URI', 'doccheck-access'),
                     array($this, 'render_redirect_uri_display'),
-                    'doccheck_login_general_settings',
-                    'doccheck_login_general_section',
+                    'docacc_general_settings',
+                    'docacc_general_section',
                     array(
                             'description' => __('Use this Redirect URI in your DocCheck Application settings.', 'doccheck-access')
                     )
@@ -177,8 +175,8 @@ if (!class_exists('DocCheck_Login_Admin')) {
                     'default_target_page',
                     __('Default Target Page', 'doccheck-access'),
                     array($this, 'render_page_select'),
-                    'doccheck_login_general_settings',
-                    'doccheck_login_general_section',
+                    'docacc_general_settings',
+                    'docacc_general_section',
                     array(
                             'id' => 'default_target_page',
                             'description' => __('The page where users will be redirected after successful login (if no specific redirect is provided via shortcode).', 'doccheck-access')
@@ -189,8 +187,8 @@ if (!class_exists('DocCheck_Login_Admin')) {
                     'debug_mode',
                     __('Debug Mode', 'doccheck-access'),
                     array($this, 'render_checkbox_field'),
-                    'doccheck_login_general_settings',
-                    'doccheck_login_general_section',
+                    'docacc_general_settings',
+                    'docacc_general_section',
                     array(
                             'id' => 'debug_mode',
                             'label' => __('Enable debug logging', 'doccheck-access'),
@@ -202,8 +200,8 @@ if (!class_exists('DocCheck_Login_Admin')) {
                     'make_all_pages_private',
                     __('Global Settings for all Pages', 'doccheck-access'),
                     array($this, 'render_checkbox_field'),
-                    'doccheck_login_general_settings',
-                    'doccheck_login_general_section',
+                    'docacc_general_settings',
+                    'docacc_general_section',
                     array(
                             'id' => 'make_all_pages_private',
                             'label' => __('Make all Pages Private', 'doccheck-access'),
@@ -215,8 +213,8 @@ if (!class_exists('DocCheck_Login_Admin')) {
                     'auto_assign_parent_config',
                     __('Inheritance', 'doccheck-access'),
                     array($this, 'render_checkbox_field'),
-                    'doccheck_login_general_settings',
-                    'doccheck_login_general_section',
+                    'docacc_general_settings',
+                    'docacc_general_section',
                     array(
                             'id' => 'auto_assign_parent_config',
                             'label' => __('Auto-assign Parent Configurations to all Child Pages', 'doccheck-access'),
@@ -228,8 +226,8 @@ if (!class_exists('DocCheck_Login_Admin')) {
                     'login_button_version',
                     __('Login Button Version', 'doccheck-access'),
                     array($this, 'render_text_field'),
-                    'doccheck_login_general_settings',
-                    'doccheck_login_general_section',
+                    'docacc_general_settings',
+                    'docacc_general_section',
                     array(
                             'id' => 'login_button_version',
                             'description' => __('Specify the version of the DocCheck Login Button (e.g., 3.2.7). Use "@latest" for the most recent version.', 'doccheck-access') . '<br><br><strong>' . __('Note:', 'doccheck-access') . '</strong><br>⚠️ ' . __('Entering an incorrect version may prevent the script from loading and the login from working.', 'doccheck-access') . '<br>ℹ️ ' . __('By default, the latest version (@latest) is always loaded.', 'doccheck-access')                    )
@@ -239,10 +237,10 @@ if (!class_exists('DocCheck_Login_Admin')) {
 
             // User Management Settings
             add_settings_section(
-                    'doccheck_login_user_management_section',
+                    'docacc_user_management_section',
                     __('User Management', 'doccheck-access'),
                     array($this, 'display_user_management_section'),
-                    'doccheck_login_user_settings'
+                    'docacc_user_settings'
             );
 
             // Moved from General section to User Management
@@ -250,8 +248,8 @@ if (!class_exists('DocCheck_Login_Admin')) {
                     'authentication_mode',
                     __('Authentication Mode', 'doccheck-access'),
                     array($this, 'render_select_field'),
-                    'doccheck_login_user_settings',
-                    'doccheck_login_user_management_section',
+                    'docacc_user_settings',
+                    'docacc_user_management_section',
                     array(
                             'id' => 'authentication_mode',
                             'options' => array(
@@ -266,8 +264,8 @@ if (!class_exists('DocCheck_Login_Admin')) {
                     'default_role',
                     __('Default User Role', 'doccheck-access'),
                     array($this, 'render_role_select'),
-                    'doccheck_login_user_settings',
-                    'doccheck_login_user_management_section',
+                    'docacc_user_settings',
+                    'docacc_user_management_section',
                     array(
                             'id' => 'default_role',
                             'description' => __('The default WordPress role for new users created via DocCheck Login', 'doccheck-access'),
@@ -279,8 +277,8 @@ if (!class_exists('DocCheck_Login_Admin')) {
                     'allow_user_creation',
                     __('Automatic User Creation', 'doccheck-access'),
                     array($this, 'render_checkbox_field'),
-                    'doccheck_login_user_settings',
-                    'doccheck_login_user_management_section',
+                    'docacc_user_settings',
+                    'docacc_user_management_section',
                     array(
                             'id' => 'allow_user_creation',
                             'label' => __('Allow creating local WordPress users for first-time DocCheck logins', 'doccheck-access'),
@@ -293,8 +291,8 @@ if (!class_exists('DocCheck_Login_Admin')) {
                     'scope_property_matrix',
                     __('Scope & Property Selection', 'doccheck-access'),
                     array($this, 'render_scope_property_matrix'),
-                    'doccheck_login_user_settings',
-                    'doccheck_login_user_management_section',
+                    'docacc_user_settings',
+                    'docacc_user_management_section',
                     array(
                             'description' => __('Select which scopes to request and which properties to store as user metadata.', 'doccheck-access'),
                             'wrapper_class' => 'scope-property-field'
@@ -345,18 +343,18 @@ if (!class_exists('DocCheck_Login_Admin')) {
 
                 <div class="doccheck-login-content">
                     <form method="post" action="options.php">
-                        <?php settings_fields('doccheck_login_settings'); ?>
+                        <?php settings_fields('docacc_settings'); ?>
 
                         <!-- General Tab Content -->
                         <div id="general-tab"
                              class="tab-content" <?php echo $active_tab !== 'general' ? 'style="display:none"' : ''; ?>>
-                            <?php do_settings_sections('doccheck_login_general_settings'); ?>
+                            <?php do_settings_sections('docacc_general_settings'); ?>
                         </div>
 
                         <!-- User Management Tab Content -->
                         <div id="user-tab"
                              class="tab-content" <?php echo $active_tab !== 'user' ? 'style="display:none"' : ''; ?>>
-                            <?php do_settings_sections('doccheck_login_user_settings'); ?>
+                            <?php do_settings_sections('docacc_user_settings'); ?>
                         </div>
 
                         <!-- Documentation Tab Content - No form content needed -->
@@ -366,7 +364,7 @@ if (!class_exists('DocCheck_Login_Admin')) {
                                 <h3><?php esc_html_e('Authentication Modes Explained', 'doccheck-access'); ?></h3>
                                 <div style="margin-bottom: 20px; border-left: 4px solid #cc0000; padding: 10px 15px; background-color: #fff5f5;">
                                     <p><strong><?php esc_html_e('Anonymous Session', 'doccheck-access'); ?>:</strong>
-                                        <?php esc_html_e('Users are authenticated via DocCheck but no WordPress user is created. User data is available only during the session and not stored permanently. Data can be accessed via the doccheck_login_session_created hook.', 'doccheck-access'); ?>
+                                        <?php esc_html_e('Users are authenticated via DocCheck but no WordPress user is created. User data is available only during the session and not stored permanently. Data can be accessed via the docacc_session_created hook.', 'doccheck-access'); ?>
                                     </p>
                                     <p><strong><?php esc_html_e('WordPress User', 'doccheck-access'); ?>:</strong>
                                         <?php esc_html_e('A WordPress user is created for each DocCheck user on first login. Selected user properties are stored in WordPress user metadata for future use.', 'doccheck-access'); ?>
@@ -375,7 +373,7 @@ if (!class_exists('DocCheck_Login_Admin')) {
 
                                 <h3><?php esc_html_e('Shortcode Usage', 'doccheck-access'); ?></h3>
 
-                                <h4><code>[doccheck_login]</code></h4>
+                                <h4><code>[docacc_login]</code></h4>
                                 <p><?php esc_html_e('Displays the DocCheck login button. Can be used on any page or post.', 'doccheck-access'); ?></p>
                                 <p><strong><?php esc_html_e('Attributes:', 'doccheck-access'); ?></strong></p>
                                 <ul>
@@ -396,19 +394,19 @@ if (!class_exists('DocCheck_Login_Admin')) {
                                     </li>
                                 </ul>
                                 <p><strong><?php esc_html_e('Examples:', 'doccheck-access'); ?></strong></p>
-                                <code>[doccheck_login size="large" language="en"]</code><br>
-                                <code>[doccheck_login samepageredirect="1"]</code>
+                                <code>[docacc_login size="large" language="en"]</code><br>
+                                <code>[docacc_login samepageredirect="1"]</code>
                                 - <?php esc_html_e('Redirects back to the current page after login', 'doccheck-access'); ?>
 
-                                <h4><code>[dc-hide-content]</code></h4>
+                                <h4><code>[docacc_hide_content]</code></h4>
                                 <p><?php esc_html_e('Hides content so that it is only visible to logged-in DocCheck users. Wrap the protected content between the opening and closing shortcode tags.', 'doccheck-access'); ?></p>
                                 <p><?php esc_html_e('Example:', 'doccheck-access'); ?></p>
-                                <pre><code>[dc-hide-content]
+                                <pre><code>[docacc_hide_content]
 <?php esc_html_e('This content is only visible to logged-in DocCheck users.', 'doccheck-access'); ?>
 
-[/dc-hide-content]</code></pre>
+[/docacc_hide_content]</code></pre>
 
-                                <h4><code>[dc_logout]</code></h4>
+                                <h4><code>[docacc_logout]</code></h4>
                                 <p><?php esc_html_e('Displays a logout link for users who are currently logged in.', 'doccheck-access'); ?></p>
                                 <p><strong><?php esc_html_e('Attributes:', 'doccheck-access'); ?></strong></p>
                                 <ul>
@@ -417,9 +415,9 @@ if (!class_exists('DocCheck_Login_Admin')) {
                                     </li>
                                 </ul>
                                 <p><?php esc_html_e('Example:', 'doccheck-access'); ?></p>
-                                <code>[dc_logout redirect="https://example.com/thank-you"]</code>
+                                <code>[docacc_logout redirect="https://example.com/thank-you"]</code>
 
-                                <h4><code>[dc_sitemap]</code></h4>
+                                <h4><code>[docacc_sitemap]</code></h4>
                                 <p><?php esc_html_e('Renders an HTML sitemap that automatically hides protected pages from unauthenticated visitors. Also filters the WordPress XML sitemap to exclude protected pages from search engines.', 'doccheck-access'); ?></p>
                                 <p><strong><?php esc_html_e('Attributes:', 'doccheck-access'); ?></strong></p>
                                 <ul>
@@ -437,58 +435,58 @@ if (!class_exists('DocCheck_Login_Admin')) {
                                     </li>
                                 </ul>
                                 <p><strong><?php esc_html_e('Examples:', 'doccheck-access'); ?></strong></p>
-                                <code>[dc_sitemap]</code>
+                                <code>[docacc_sitemap]</code>
                                 - <?php esc_html_e('Shows all public post types, hides protected pages for unauthenticated users', 'doccheck-access'); ?><br>
-                                <code>[dc_sitemap post_type="page" depth="2"]</code>
+                                <code>[docacc_sitemap post_type="page" depth="2"]</code>
                                 - <?php esc_html_e('Shows only pages, max 2 levels deep', 'doccheck-access'); ?><br>
-                                <code>[dc_sitemap show_protected="yes"]</code>
+                                <code>[docacc_sitemap show_protected="yes"]</code>
                                 - <?php esc_html_e('Always shows protected pages regardless of login status', 'doccheck-access'); ?><br>
-                                <code>[dc_sitemap post_type="page,post" exclude="42,99"]</code>
+                                <code>[docacc_sitemap post_type="page,post" exclude_ids="42,99"]</code>
                                 - <?php esc_html_e('Shows pages and posts, excludes specific IDs', 'doccheck-access'); ?>
 
                                 <div class="doccheck-developer-section">
                                     <h3><span class="doccheck-dev-badge"><?php esc_html_e('For Developer', 'doccheck-access'); ?></span> <?php esc_html_e('Customization Hooks', 'doccheck-access'); ?></h3>
                                     <p><?php esc_html_e('Developers can use these hooks to customize the plugin behavior:', 'doccheck-access'); ?></p>
                                     <ul>
-                                        <li><code>doccheck_login_user_created</code>
+                                        <li><code>docacc_user_created</code>
                                             - <?php esc_html_e('Fires after a new user is created', 'doccheck-access'); ?>
                                         </li>
-                                        <li><code>doccheck_login_user_logged_in</code>
+                                        <li><code>docacc_user_logged_in</code>
                                             - <?php esc_html_e('Fires when an existing user logs in', 'doccheck-access'); ?>
                                         </li>
-                                        <li><code>doccheck_login_session_created</code>
+                                        <li><code>docacc_session_created</code>
                                             - <?php esc_html_e('Fires when a user is authenticated via anonymous session mode', 'doccheck-access'); ?>
                                         </li>
-                                        <li><code>doccheck_login_map_role</code>
+                                        <li><code>docacc_map_role</code>
                                             - <?php esc_html_e('Filter to customize user role based on DocCheck data', 'doccheck-access'); ?>
                                         </li>
-                                        <li><code>doccheck_protected_template</code>
+                                        <li><code>docacc_protected_template</code>
                                             - <?php esc_html_e('Filter to customize the path to the template used for protected pages', 'doccheck-access'); ?>
                                         </li>
-                                        <li><code>doccheck_is_authenticated</code>
-                                            - <?php esc_html_e('Filter to override the result of doccheck_is_authenticated()', 'doccheck-access'); ?>
+                                        <li><code>docacc_is_authenticated</code>
+                                            - <?php esc_html_e('Filter to override the result of docacc_is_authenticated()', 'doccheck-access'); ?>
                                         </li>
-                                        <li><code>doccheck_user_data</code>
-                                            - <?php esc_html_e('Filter to modify the array returned by doccheck_get_user_data()', 'doccheck-access'); ?>
+                                        <li><code>docacc_user_data</code>
+                                            - <?php esc_html_e('Filter to modify the array returned by docacc_get_user_data()', 'doccheck-access'); ?>
                                         </li>
                                     </ul>
 
                                     <h3><span class="doccheck-dev-badge"><?php esc_html_e('For Developer', 'doccheck-access'); ?></span> <?php esc_html_e('Template Functions', 'doccheck-access'); ?></h3>
                                     <p><?php esc_html_e('Use these global PHP functions in your theme templates to detect DocCheck authentication:', 'doccheck-access'); ?></p>
                                     <ul>
-                                        <li><code>doccheck_is_authenticated()</code>
+                                        <li><code>docacc_is_authenticated()</code>
                                             - <?php esc_html_e('Returns true if the current visitor is authenticated via DocCheck (works in both authentication modes)', 'doccheck-access'); ?>
                                         </li>
-                                        <li><code>doccheck_get_user_data()</code>
+                                        <li><code>docacc_get_user_data()</code>
                                             - <?php esc_html_e('Returns an associative array of DocCheck user fields, or an empty array for unauthenticated visitors', 'doccheck-access'); ?>
                                         </li>
                                     </ul>
                                     <p><?php esc_html_e('Example usage in a theme template:', 'doccheck-access'); ?></p>
-                                    <pre><code>&lt;?php if ( function_exists( 'doccheck_is_authenticated' ) &amp;&amp; doccheck_is_authenticated() ) : ?&gt;
+                                    <pre><code>&lt;?php if ( docacc_is_authenticated() ) : ?&gt;
     &lt;div class="hcp-only"&gt;Visible only to DocCheck users&lt;/div&gt;
 &lt;?php else : ?&gt;
     &lt;p&gt;Please log in with DocCheck.&lt;/p&gt;
-    &lt;?php echo do_shortcode( '[doccheck_login]' ); ?&gt;
+    &lt;?php echo do_shortcode( '[docacc_login]' ); ?&gt;
 &lt;?php endif; ?&gt;</code></pre>
 
                                     <h3><span class="doccheck-dev-badge"><?php esc_html_e('For Developer', 'doccheck-access'); ?></span> <?php esc_html_e('Customizing Protected Content Template', 'doccheck-access'); ?></h3>
@@ -502,7 +500,7 @@ if (!class_exists('DocCheck_Login_Admin')) {
                                         <li>
                                             <strong><?php esc_html_e('WordPress Filter', 'doccheck-access'); ?>
                                                 :</strong><br>
-                                            <?php esc_html_e('Use the doccheck_protected_template filter in your theme\'s functions.php to programmatically change the path to the template file.', 'doccheck-access'); ?>
+                                            <?php esc_html_e('Use the docacc_protected_template filter in your theme\'s functions.php to programmatically change the path to the template file.', 'doccheck-access'); ?>
                                         </li>
                                     </ol>
 
@@ -588,7 +586,7 @@ if (!class_exists('DocCheck_Login_Admin')) {
 
             ?>
             <input type="text" id="<?php echo esc_attr($id); ?>"
-                   name="doccheck_login_settings[<?php echo esc_attr($id); ?>]"
+                   name="docacc_settings[<?php echo esc_attr($id); ?>]"
                    value="<?php echo esc_attr($value); ?>"
                    class="regular-text"/>
             <?php if ($description) : ?>
@@ -611,7 +609,7 @@ if (!class_exists('DocCheck_Login_Admin')) {
 
             ?>
             <input type="password" id="<?php echo esc_attr($id); ?>"
-                   name="doccheck_login_settings[<?php echo esc_attr($id); ?>]"
+                   name="docacc_settings[<?php echo esc_attr($id); ?>]"
                    value="<?php echo esc_attr($value); ?>"
                    class="regular-text"/>
             <?php if ($description) : ?>
@@ -644,7 +642,7 @@ if (!class_exists('DocCheck_Login_Admin')) {
             ?>
             <label for="<?php echo esc_attr($id); ?>">
                 <input type="checkbox" id="<?php echo esc_attr($id); ?>"
-                       name="doccheck_login_settings[<?php echo esc_attr($id); ?>]"
+                       name="docacc_settings[<?php echo esc_attr($id); ?>]"
                         <?php checked($checked); ?> />
                 <?php echo esc_html($label); ?>
             </label>
@@ -689,7 +687,7 @@ if (!class_exists('DocCheck_Login_Admin')) {
             }
             ?>
             <select id="<?php echo esc_attr($id); ?>"
-                    name="doccheck_login_settings[<?php echo esc_attr($id); ?>]">
+                    name="docacc_settings[<?php echo esc_attr($id); ?>]">
                 <?php foreach ($roles as $role_id => $role_name) : ?>
                     <option value="<?php echo esc_attr($role_id); ?>"
                             <?php selected($value, $role_id); ?>>
@@ -728,7 +726,7 @@ if (!class_exists('DocCheck_Login_Admin')) {
             }
             ?>
             <select id="<?php echo esc_attr($id); ?>"
-                    name="doccheck_login_settings[<?php echo esc_attr($id); ?>]">
+                    name="docacc_settings[<?php echo esc_attr($id); ?>]">
                 <?php foreach ($options as $option_value => $option_label) : ?>
                     <option value="<?php echo esc_attr($option_value); ?>"
                             <?php selected($value, $option_value); ?>>
@@ -761,7 +759,7 @@ if (!class_exists('DocCheck_Login_Admin')) {
             $value = isset($this->settings->$id) ? $this->settings->$id : '';
 
             $dropdown_args = array(
-                    'name' => 'doccheck_login_settings[' . esc_attr($id) . ']',
+                    'name' => 'docacc_settings[' . esc_attr($id) . ']',
                     'id' => esc_attr($id),
                     'selected' => $value,
                     'show_option_none' => esc_html__('Select a page', 'doccheck-access'),
@@ -916,13 +914,13 @@ if (!class_exists('DocCheck_Login_Admin')) {
                 echo '<td class="scope-checkbox">';
                 echo '<input 
                     type="checkbox" 
-                    name="doccheck_login_settings[selected_scopes][' . esc_attr($scope_key) . ']" 
+                    name="docacc_settings[selected_scopes][' . esc_attr($scope_key) . ']" 
                     id="scope_' . esc_attr($scope_key) . '" 
                     value="1" ' .
                         checked($scope_checked || $is_required, true, false) . ' ' .
                         ($is_required ? 'disabled' : '') . '>';
                 if ($is_required) {
-                    echo '<input type="hidden" name="doccheck_login_settings[selected_scopes][' . esc_attr($scope_key) . ']" value="1">';
+                    echo '<input type="hidden" name="docacc_settings[selected_scopes][' . esc_attr($scope_key) . ']" value="1">';
                 }
                 echo '</td>';
 
@@ -955,7 +953,7 @@ if (!class_exists('DocCheck_Login_Admin')) {
                     echo '<div class="property-item">';
                     echo '<input 
                         type="checkbox" 
-                        name="doccheck_login_settings[selected_properties][' . esc_attr($property) . ']" 
+                        name="docacc_settings[selected_properties][' . esc_attr($property) . ']" 
                         id="property_' . esc_attr($property) . '" 
                         value="1" ' .
                             checked($property_checked, true, false) . ' ' .
@@ -963,7 +961,7 @@ if (!class_exists('DocCheck_Login_Admin')) {
                             ($property === 'unique_id' && $is_required ? 'disabled' : '') . '>';
 
                     if ($property === 'unique_id' && $is_required) {
-                        echo '<input type="hidden" name="doccheck_login_settings[selected_properties][' . esc_attr($property) . ']" value="1">';
+                        echo '<input type="hidden" name="docacc_settings[selected_properties][' . esc_attr($property) . ']" value="1">';
                     }
 
                     echo '<label for="property_' . esc_attr($property) . '">';
@@ -998,58 +996,58 @@ if (!class_exists('DocCheck_Login_Admin')) {
             $field_mappings = array(
                     'unique_id' => array(
                             'label' => __('Unique ID', 'doccheck-access'),
-                            'meta_key' => 'doccheck_unique_id',
+                            'meta_key' => 'docacc_unique_id',
                             'description' => __('Required for user identification', 'doccheck-access'),
                             'required' => true,
                     ),
                     'profession' => array(
                             'label' => __('Profession', 'doccheck-access'),
-                            'meta_key' => 'doccheck_profession',
+                            'meta_key' => 'docacc_profession',
                             'description' => __('User\'s medical profession', 'doccheck-access'),
                     ),
                     'specialty' => array(
                             'label' => __('Specialty', 'doccheck-access'),
-                            'meta_key' => 'doccheck_specialty',
+                            'meta_key' => 'docacc_specialty',
                             'description' => __('User\'s medical specialty', 'doccheck-access'),
                     ),
                     'email' => array(
                             'label' => __('Email', 'doccheck-access'),
-                            'meta_key' => 'doccheck_email',
+                            'meta_key' => 'docacc_email',
                             'description' => __('User\'s email address', 'doccheck-access'),
                     ),
                     'name' => array(
                             'label' => __('Name', 'doccheck-access'),
-                            'meta_key' => 'doccheck_name',
+                            'meta_key' => 'docacc_name',
                             'description' => __('Full name (also splits into first_name, last_name)', 'doccheck-access'),
                     ),
                     'occupation_detail' => array(
                             'label' => __('Occupation Detail', 'doccheck-access'),
-                            'meta_key' => 'doccheck_occupation_detail',
+                            'meta_key' => 'docacc_occupation_detail',
                             'description' => __('Detailed information about occupation', 'doccheck-access'),
                     ),
                     'address' => array(
                             'label' => __('Address', 'doccheck-access'),
-                            'meta_key' => 'doccheck_address',
+                            'meta_key' => 'docacc_address',
                             'description' => __('User\'s address (sub-fields stored separately)', 'doccheck-access'),
                     ),
                     'country' => array(
                             'label' => __('Country', 'doccheck-access'),
-                            'meta_key' => 'doccheck_country',
+                            'meta_key' => 'docacc_country',
                             'description' => __('User\'s country', 'doccheck-access'),
                     ),
                     'language' => array(
                             'label' => __('Language', 'doccheck-access'),
-                            'meta_key' => 'doccheck_language',
+                            'meta_key' => 'docacc_language',
                             'description' => __('User\'s language', 'doccheck-access'),
                     ),
                     'gender' => array(
                             'label' => __('Gender', 'doccheck-access'),
-                            'meta_key' => 'doccheck_gender',
+                            'meta_key' => 'docacc_gender',
                             'description' => __('User\'s gender', 'doccheck-access'),
                     ),
                     'title' => array(
                             'label' => __('Title', 'doccheck-access'),
-                            'meta_key' => 'doccheck_title',
+                            'meta_key' => 'docacc_title',
                             'description' => __('User\'s title (Dr., Prof., etc.)', 'doccheck-access'),
                     ),
             );
@@ -1080,7 +1078,7 @@ if (!class_exists('DocCheck_Login_Admin')) {
             echo '</div>';
 
             echo '<p class="description">' .
-                    esc_html__('Note: All fields are also stored as serialized data in meta key `doccheck_userdata`.', 'doccheck-access') .
+                    esc_html__('Note: All fields are also stored as serialized data in meta key `docacc_userdata`.', 'doccheck-access') .
                     '</p>';
 
             // Add note about required scopes
@@ -1106,7 +1104,7 @@ if (!class_exists('DocCheck_Login_Admin')) {
 
             ?>
             <div class="doccheck-redirect-uri-wrapper" style="margin-bottom: 10px;">
-                <input type="text" id="doccheck_redirect_uri"
+                <input type="text" id="docacc_redirect_uri"
                        value="<?php echo esc_attr($redirect_uri); ?>"
                        class="regular-text" readonly
                        style="background-color: #f0f0f1;"/>
@@ -1142,7 +1140,7 @@ if (!class_exists('DocCheck_Login_Admin')) {
             foreach ($required_fields as $field => $error_message) {
                 if (empty($input[$field])) {
                     add_settings_error(
-                            'doccheck_login_settings',
+                            'docacc_settings',
                             'required_' . $field,
                             $error_message,
                             'error'
@@ -1177,7 +1175,7 @@ if (!class_exists('DocCheck_Login_Admin')) {
                 ! empty( $role_obj->capabilities['manage_options'] ) ||
                 ! empty( $role_obj->capabilities['edit_others_posts'] )
             ) {
-                $output['default_role'] = get_role('doccheck_user') ? 'doccheck_user' : 'subscriber';
+                $output['default_role'] = get_role('docacc_user') ? 'docacc_user' : 'subscriber';
             }
 
             // Default target page
@@ -1200,12 +1198,12 @@ if (!class_exists('DocCheck_Login_Admin')) {
                 $output['allow_user_creation'] = 'off';
             }
 
-            // Add doccheck_user role if wordpress_user mode is selected
+            // Add docacc_user role if wordpress_user mode is selected
             if ($output['authentication_mode'] === 'wordpress_user') {
-                if (!get_role('doccheck_user')) {
+                if (!get_role('docacc_user')) {
                     $subscriber = get_role('subscriber');
                     $capabilities = $subscriber ? $subscriber->capabilities : array('read' => true);
-                    add_role('doccheck_user', __('DocCheck User', 'doccheck-access'), $capabilities);
+                    add_role('docacc_user', __('DocCheck User', 'doccheck-access'), $capabilities);
                 }
             }
 
@@ -1266,7 +1264,7 @@ if (!class_exists('DocCheck_Login_Admin')) {
             // If we encountered errors, return original settings to prevent loss of data
             if ($errors) {
                 // Get existing options
-                $existing_options = get_option('doccheck_login_settings');
+                $existing_options = get_option('docacc_settings');
                 return $existing_options;
             }
 
@@ -1306,7 +1304,7 @@ if (!class_exists('DocCheck_Login_Admin')) {
 
             foreach ($post_types as $post_type) {
                 add_meta_box(
-                        'doccheck_page_protection',
+                        'docacc_page_protection',
                         __('DocCheck Page Protection', 'doccheck-access'),
                         array($this, 'render_page_protection_metabox'),
                         $post_type,
@@ -1339,7 +1337,7 @@ if (!class_exists('DocCheck_Login_Admin')) {
         public function render_protected_column($column_name, $post_id)
         {
             if ($column_name === 'Private') {
-                $is_protected = get_post_meta($post_id, '_doccheck_protected', true);
+                $is_protected = get_post_meta($post_id, 'docacc_protected', true);
                 if ($is_protected) {
                     echo '<span class="dashicons dashicons-lock" title="' . esc_attr__('Restricted', 'doccheck-access') . '"></span>';
                 } else {
@@ -1357,31 +1355,31 @@ if (!class_exists('DocCheck_Login_Admin')) {
         public function render_page_protection_metabox($post)
         {
             // Use nonces for verification
-            wp_nonce_field('doccheck_save_page_protection', 'doccheck_page_protection_nonce');
+            wp_nonce_field('docacc_save_page_protection', 'docacc_page_protection_nonce');
 
-            $is_protected = get_post_meta($post->ID, '_doccheck_protected', true);
+            $is_protected = get_post_meta($post->ID, 'docacc_protected', true);
             $auth_mode = $this->settings->get_authentication_mode();
 
             echo '<p>';
             echo 'Limit access to Logged in users.';
             echo '</p>';
             echo '<p>';
-            echo '<label for="doccheck_protected">';
-            echo '<input type="checkbox" id="doccheck_protected" name="doccheck_protected" value="1" ' . checked(1, $is_protected, false) . ' />';
+            echo '<label for="docacc_protected">';
+            echo '<input type="checkbox" id="docacc_protected" name="docacc_protected" value="1" ' . checked(1, $is_protected, false) . ' />';
             echo ' ' . esc_html__(' Require Doccheck Login', 'doccheck-access');
             echo '</label>';
             echo '</p>';
 
             // Show role restriction options only in wordpress_user mode
             if ($auth_mode === 'wordpress_user') {
-                $allowed_roles = get_post_meta($post->ID, '_doccheck_allowed_roles', true);
+                $allowed_roles = get_post_meta($post->ID, 'docacc_allowed_roles', true);
                 if (!is_array($allowed_roles)) {
-                    $allowed_roles = ['doccheck_user'];
+                    $allowed_roles = ['docacc_user'];
                 }
 
                 $all_roles = wp_roles()->roles;
 
-                echo '<div id="doccheck-role-restriction" style="margin-top: 10px;' . ($is_protected ? '' : ' display:none;') . '">';
+                echo '<div id="docacc-role-restriction" style="margin-top: 10px;' . ($is_protected ? '' : ' display:none;') . '">';
                 echo '<p><strong>' . esc_html__('Restrict to specific roles', 'doccheck-access') . '</strong></p>';
                 echo '<p class="description">' . esc_html__('If none are selected, all authenticated users can access this content.', 'doccheck-access') . '</p>';
                 echo '<fieldset style="margin-top: 5px;">';
@@ -1389,7 +1387,7 @@ if (!class_exists('DocCheck_Login_Admin')) {
                 foreach ($all_roles as $role_slug => $role_data) {
                     $is_checked = in_array($role_slug, $allowed_roles, true);
                     echo '<label style="display: block; margin-bottom: 4px;">';
-                    echo '<input type="checkbox" name="doccheck_allowed_roles[]" value="' . esc_attr($role_slug) . '" ' . checked(true, $is_checked, false) . ' />';
+                    echo '<input type="checkbox" name="docacc_allowed_roles[]" value="' . esc_attr($role_slug) . '" ' . checked(true, $is_checked, false) . ' />';
                     echo ' ' . esc_html(translate_user_role($role_data['name']));
                     echo '</label>';
                 }
@@ -1410,13 +1408,13 @@ if (!class_exists('DocCheck_Login_Admin')) {
         public function save_page_protection_meta($post_id)
         {
             // Check if nonce is set.
-            if (!isset($_POST['doccheck_page_protection_nonce'])) {
+            if (!isset($_POST['docacc_page_protection_nonce'])) {
                 return;
             }
 
             // Verify that the nonce is valid.
-            $nonce = isset($_POST['doccheck_page_protection_nonce']) ? sanitize_text_field(wp_unslash($_POST['doccheck_page_protection_nonce'])) : '';
-            if (!wp_verify_nonce($nonce, 'doccheck_save_page_protection')) {
+            $nonce = isset($_POST['docacc_page_protection_nonce']) ? sanitize_text_field(wp_unslash($_POST['docacc_page_protection_nonce'])) : '';
+            if (!wp_verify_nonce($nonce, 'docacc_save_page_protection')) {
                 return;
             }
 
@@ -1425,10 +1423,10 @@ if (!class_exists('DocCheck_Login_Admin')) {
                 return;
             }
 
-            // Check if settings are an object (should be DocCheck_Login_Settings)
+            // Check if settings are an object (should be DocAcc_Settings)
             if (is_array($this->settings)) {
-                $is_protected = isset($_POST['doccheck_protected']) ? 1 : 0;
-                update_post_meta($post_id, '_doccheck_protected', $is_protected);
+                $is_protected = isset($_POST['docacc_protected']) ? 1 : 0;
+                update_post_meta($post_id, 'docacc_protected', $is_protected);
                 return;
             }
 
@@ -1441,19 +1439,18 @@ if (!class_exists('DocCheck_Login_Admin')) {
             }
 
             // Update the meta field in the database.
-            $is_protected = isset($_POST['doccheck_protected']) ? 1 : 0;
-            update_post_meta($post_id, '_doccheck_protected', $is_protected);
+            $is_protected = isset($_POST['docacc_protected']) ? 1 : 0;
+            update_post_meta($post_id, 'docacc_protected', $is_protected);
 
             // Save allowed roles (only relevant in wordpress_user mode)
             if ($this->settings->get_authentication_mode() === 'wordpress_user') {
                 $allowed_roles = [];
-                if (isset($_POST['doccheck_allowed_roles']) && is_array($_POST['doccheck_allowed_roles'])) {
+                if (isset($_POST['docacc_allowed_roles']) && is_array($_POST['docacc_allowed_roles'])) {
                     // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized via array_map and sanitize_text_field.
-                    $raw_roles     = (array) wp_unslash($_POST['doccheck_allowed_roles']);
+                    $raw_roles     = (array) wp_unslash($_POST['docacc_allowed_roles']);
                     $allowed_roles = array_map('sanitize_text_field', $raw_roles);
                 }
-                update_post_meta($post_id, '_doccheck_allowed_roles', $allowed_roles);
+                update_post_meta($post_id, 'docacc_allowed_roles', $allowed_roles);
             }
         }
-    }
 }

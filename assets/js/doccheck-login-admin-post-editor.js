@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
-    var checkbox = document.getElementById("doccheck_protected");
-    var restriction = document.getElementById("doccheck-role-restriction");
+    var checkbox = document.getElementById("docacc_protected");
+    var restriction = document.getElementById("docacc-role-restriction");
 
     if (!checkbox || !restriction) {
         return;

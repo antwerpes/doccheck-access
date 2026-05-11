@@ -1,5 +1,5 @@
 jQuery(document).ready(function ($) {
-    var copiedText = (window.doccheckAccessAdmin && window.doccheckAccessAdmin.copiedText) ? window.doccheckAccessAdmin.copiedText : "Copied!";
+    var copiedText = (window.docaccAdmin && window.docaccAdmin.copiedText) ? window.docaccAdmin.copiedText : "Copied!";
 
     $(".nav-tab-wrapper a").on("click", function (e) {
         e.preventDefault();
@@ -60,7 +60,7 @@ jQuery(document).ready(function ($) {
     $("#authentication_mode").on("change", toggleConditionalFields);
 
     $("#copy-redirect-uri").on("click", function () {
-        var copyText = document.getElementById("doccheck_redirect_uri");
+        var copyText = document.getElementById("docacc_redirect_uri");
         if (!copyText) {
             return;
         }

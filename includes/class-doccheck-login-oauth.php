@@ -3,23 +3,22 @@
  * The OAuth handler class
  *
  * @since      1.0.0
- * @package    DocCheck_Login
+ * @package    DocAcc
  */
 
 if (! defined('ABSPATH')) {
     exit;
 }
 
-if (!class_exists('DocCheck_Login_OAuth')) {
-    class DocCheck_Login_OAuth
-    {
+class DocAcc_OAuth
+{
 
         /**
          * Plugin settings
          *
          * @since  1.0.0
          * @access private
-         * @var    DocCheck_Login_Settings $settings The plugin settings.
+         * @var    DocAcc_Settings $settings The plugin settings.
          */
         private $settings;
 
@@ -27,11 +26,11 @@ if (!class_exists('DocCheck_Login_OAuth')) {
         /**
          * Initialize the class
          *
-         * @param DocCheck_Login_Settings $settings Plugin settings.
+         * @param DocAcc_Settings $settings Plugin settings.
          *
          * @since 1.0.0
          */
-        public function __construct(DocCheck_Login_Settings $settings)
+        public function __construct(DocAcc_Settings $settings)
         {
             $this->settings = $settings;
         }
@@ -95,7 +94,7 @@ if (!class_exists('DocCheck_Login_OAuth')) {
             if ($app_state !== '') {
                 $transient_data['app_state'] = $app_state;
             }
-            set_transient('doccheck_state_' . $nonce, $transient_data, 600);
+            set_transient('docacc_state_' . $nonce, $transient_data, 600);
 
             $state = $nonce;
 
@@ -119,7 +118,7 @@ if (!class_exists('DocCheck_Login_OAuth')) {
         private function encrypt_url($url)
         {
             // Create a simple encryption key based on the client secret (or a static salt if not available)
-            $encryption_key = $this->settings->get_client_secret() ?: DOCCHECK_ACCESS_VERSION;
+            $encryption_key = $this->settings->get_client_secret() ?: DOCACC_VERSION;
 
             // Use WordPress' nonce system as a simple encryption method
             $encrypted = base64_encode(wp_salt('auth').':'.$url);
@@ -192,7 +191,7 @@ if (!class_exists('DocCheck_Login_OAuth')) {
             $this->log_debug('Extracted nonce: ' . $nonce);
 
             // Verify the nonce exists as a transient (set during generate_state)
-            $transient_key = 'doccheck_state_' . $nonce;
+            $transient_key = 'docacc_state_' . $nonce;
             $transient_value = get_transient($transient_key);
             if (!$transient_value) {
                 $this->log_debug('No valid state transient found for nonce: ' . $nonce);
@@ -239,7 +238,7 @@ if (!class_exists('DocCheck_Login_OAuth')) {
             $bytes = function_exists('random_bytes') ? random_bytes(32) : openssl_random_pseudo_bytes(32);
             $verifier = bin2hex($bytes);
 
-            $_SESSION['doccheck_code_verifier'] = $verifier;
+            $_SESSION['docacc_code_verifier'] = $verifier;
 
             return $verifier;
         }
@@ -338,7 +337,7 @@ if (!class_exists('DocCheck_Login_OAuth')) {
             }
 
             // Clear session data
-            unset($_SESSION['doccheck_code_verifier']);
+            unset($_SESSION['docacc_code_verifier']);
 
             // Determine redirect URL
             // First check if we have a custom redirect URL in the state parameter
@@ -617,10 +616,10 @@ if (!class_exists('DocCheck_Login_OAuth')) {
             }
 
             // Extract user data
-            $doccheck_id = isset($user_data['unique_id']) ? $user_data['unique_id'] : '';
+            $docacc_id = isset($user_data['unique_id']) ? $user_data['unique_id'] : '';
 
             // Try to find user by doccheck ID
-            $user = $this->get_existing_dc_user($doccheck_id);
+            $user = $this->get_existing_dc_user($docacc_id);
 
             // Create new user if none exists
             if (!$user) {
@@ -630,7 +629,7 @@ if (!class_exists('DocCheck_Login_OAuth')) {
                     return;
                 }
 
-                $user = $this->create_dc_word_user($doccheck_id, $user_data);
+                $user = $this->create_dc_word_user($docacc_id, $user_data);
 
                 if (is_null($user)) {
                     return;
@@ -639,7 +638,7 @@ if (!class_exists('DocCheck_Login_OAuth')) {
                 // Update existing user meta
                 $this->save_user_meta($user->ID, $user_data);
 
-                do_action('doccheck_login_user_logged_in', $user->ID, $user_data);
+                do_action('docacc_user_logged_in', $user->ID, $user_data);
             }
 
 
@@ -648,18 +647,19 @@ if (!class_exists('DocCheck_Login_OAuth')) {
             wp_set_auth_cookie($user->ID, true);
 
             // Update user meta with last login timestamp
-            update_user_meta($user->ID, 'doccheck_last_login', current_time('mysql'));
+            update_user_meta($user->ID, 'docacc_last_login', current_time('mysql'));
 
             // Apply role mapping hooks
             $this->apply_role_mapping($user->ID, $user_data);
         }
 
-        private function get_existing_dc_user(string $doccheck_id): ?WP_User
+        private function get_existing_dc_user(string $docacc_id): ?WP_User
         {
-            // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key, WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Necessary for user lookup by DocCheck ID.
             $existing_users = get_users([
-                'meta_key'    => 'doccheck_unique_id',
-                'meta_value'  => $doccheck_id,
+                // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Required to link an OAuth identity to an existing WordPress user.
+                'meta_key'    => 'docacc_unique_id',
+                // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Required to link an OAuth identity to an existing WordPress user.
+                'meta_value'  => $docacc_id,
                 'number'      => 1,
                 'count_total' => false,
             ]);
@@ -667,13 +667,13 @@ if (!class_exists('DocCheck_Login_OAuth')) {
             return !empty($existing_users) ? $existing_users[0] : null;
         }
 
-        private function create_dc_word_user($doccheck_id, array $user_data): ?WP_User
+        private function create_dc_word_user($docacc_id, array $user_data): ?WP_User
         {
             $email = isset($user_data['email']) ? $user_data['email'] : '';
             $display_name = isset($user_data['name']) ? $user_data['name'] : '';
 
             // Generate username from DocCheck ID or email
-            $username = 'doccheck_'.substr($doccheck_id, 0, 8);
+            $username = 'docacc_'.substr($docacc_id, 0, 8);
             if (username_exists($username)) {
                 $username .= '_'.substr(uniqid(), 0, 5);
             }
@@ -715,12 +715,12 @@ if (!class_exists('DocCheck_Login_OAuth')) {
             }
 
             // Save DocCheck user data as user meta
-            update_user_meta($user_id, 'doccheck_unique_id', $doccheck_id);
+            update_user_meta($user_id, 'docacc_unique_id', $docacc_id);
 
             // Save other user data
             $this->save_user_meta($user_id, $user_data);
 
-            do_action('doccheck_login_user_created', $user_id, $user_data);
+            do_action('docacc_user_created', $user_id, $user_data);
 
             return $user;
         }
@@ -741,31 +741,31 @@ if (!class_exists('DocCheck_Login_OAuth')) {
             // Enhanced mapping for all possible DocCheck scopes
             $meta_mapping = [
                 // Basic fields
-                'unique_id'       => 'doccheck_unique_id',
-                'country_iso_code'         => 'doccheck_country',
-                'country_id'      => 'doccheck_country_id',
-                'user_language'   => 'doccheck_language',
-                'profession_name' => 'doccheck_profession',
-                'profession_id'   => 'doccheck_profession_id',
+                'unique_id'       => 'docacc_unique_id',
+                'country_iso_code'         => 'docacc_country',
+                'country_id'      => 'docacc_country_id',
+                'user_language'   => 'docacc_language',
+                'profession_name' => 'docacc_profession',
+                'profession_id'   => 'docacc_profession_id',
 
                 // Extended fields
-                'email'           => 'doccheck_email',
+                'email'           => 'docacc_email',
                 'first_name'      => 'first_name',
                 'last_name'       => 'last_name',
-                'discipline_name' => 'doccheck_discipline_name',
-                'discipline_id'   => 'doccheck_discipline_id',
-                'activity_name'   => 'doccheck_activity_name',
-                'activity_id'     => 'doccheck_activity_id',
-                'area_code'       => 'doccheck_area_code',
-                'street'          => 'doccheck_street',
-                'city'            => 'doccheck_city',
-                'state'           => 'doccheck_state',
+                'discipline_name' => 'docacc_discipline_name',
+                'discipline_id'   => 'docacc_discipline_id',
+                'activity_name'   => 'docacc_activity_name',
+                'activity_id'     => 'docacc_activity_id',
+                'area_code'       => 'docacc_area_code',
+                'street'          => 'docacc_street',
+                'city'            => 'docacc_city',
+                'state'           => 'docacc_state',
 
                 // Other fields (for backward compatibility)
-                'specialty'       => 'doccheck_specialty',
-                'gender'          => 'doccheck_gender',
-                'title'           => 'doccheck_title',
-                'dc_language'     => 'doccheck_preferred_language',
+                'specialty'       => 'docacc_specialty',
+                'gender'          => 'docacc_gender',
+                'title'           => 'docacc_title',
+                'dc_language'     => 'docacc_preferred_language',
             ];
 
             // Process each field in the mapping
@@ -797,19 +797,19 @@ if (!class_exists('DocCheck_Login_OAuth')) {
                 foreach ($user_data['address'] as $address_key => $address_value) {
                     $property = $address_key;
                     if (isset($selected_properties[$property]) && $selected_properties[$property]) {
-                        update_user_meta($user_id, 'doccheck_address_'.$address_key, $address_value);
+                        update_user_meta($user_id, 'docacc_address_'.$address_key, $address_value);
                     }
                 }
             }
 
             // Always save unique_id as it's required for user identification
             if (isset($user_data['unique_id'])) {
-                update_user_meta($user_id, 'doccheck_unique_id', $user_data['unique_id']);
+                update_user_meta($user_id, 'docacc_unique_id', $user_data['unique_id']);
             }
 
             // Save full response as serialized data only if debug mode is enabled
             if ($this->settings->is_debug_mode()) {
-                update_user_meta($user_id, 'doccheck_userdata', $user_data);
+                update_user_meta($user_id, 'docacc_userdata', $user_data);
             }
         }
 
@@ -832,9 +832,9 @@ if (!class_exists('DocCheck_Login_OAuth')) {
             }
 
             // Store session data
-            $_SESSION['doccheck_session_auth'] = true;
-            $_SESSION['doccheck_session_data'] = $user_data;
-            $_SESSION['doccheck_session_time'] = current_time('mysql');
+            $_SESSION['docacc_session_auth'] = true;
+            $_SESSION['docacc_session_data'] = $user_data;
+            $_SESSION['docacc_session_time'] = current_time('mysql');
 
             // Add hook for site owners to access DocCheck user data in anonymous session mode
             /**
@@ -847,7 +847,7 @@ if (!class_exists('DocCheck_Login_OAuth')) {
              *
              * @since 2.1.0
              */
-            do_action('doccheck_login_session_created', $user_data);
+            do_action('docacc_session_created', $user_data);
 
             // No user ID to apply role mapping to
             return true;
@@ -874,7 +874,7 @@ if (!class_exists('DocCheck_Login_OAuth')) {
              *
              * @return string           New user role if mapping should be applied.
              */
-            $new_role = apply_filters('doccheck_login_map_role', $user->roles[0], $user_data, $user_id);
+            $new_role = apply_filters('docacc_map_role', $user->roles[0], $user_data, $user_id);
 
             // Reject any role that grants site-management capabilities.
             $role_obj = get_role($new_role);
@@ -918,11 +918,11 @@ if (!class_exists('DocCheck_Login_OAuth')) {
                 return sanitize_text_field(uniqid('dcs_', true));
             }
 
-            if (!isset($_SESSION['doccheck_session_id'])) {
-                $_SESSION['doccheck_session_id'] = uniqid('dcs_', true);
+            if (!isset($_SESSION['docacc_session_id'])) {
+                $_SESSION['docacc_session_id'] = uniqid('dcs_', true);
             }
 
-            return sanitize_text_field($_SESSION['doccheck_session_id']);
+            return sanitize_text_field($_SESSION['docacc_session_id']);
         }
 
         /**
@@ -1073,8 +1073,8 @@ if (!class_exists('DocCheck_Login_OAuth')) {
             // Check for WordPress user with DocCheck ID
             if (is_user_logged_in()) {
                 $user_id = get_current_user_id();
-                $doccheck_id = get_user_meta($user_id, 'doccheck_unique_id', true);
-                if (!empty($doccheck_id)) {
+                $docacc_id = get_user_meta($user_id, 'docacc_unique_id', true);
+                if (!empty($docacc_id)) {
                     return true;
                 }
             }
@@ -1082,7 +1082,7 @@ if (!class_exists('DocCheck_Login_OAuth')) {
             $this->ensure_session_started(false);
 
             // Check for DocCheck session
-            if (isset($_SESSION['doccheck_session_auth']) && $_SESSION['doccheck_session_auth'] === true) {
+            if (isset($_SESSION['docacc_session_auth']) && $_SESSION['docacc_session_auth'] === true) {
                 return true;
             }
 
@@ -1095,19 +1095,19 @@ if (!class_exists('DocCheck_Login_OAuth')) {
          * @return array User data or empty array if not available
          * @since 2.1.0
          */
-        public function get_doccheck_user_data()
+        public function docacc_get_user_data()
         {
             // For WordPress users
             if (is_user_logged_in()) {
                 $user_id = get_current_user_id();
-                $doccheck_id = get_user_meta($user_id, 'doccheck_unique_id', true);
-                if (!empty($doccheck_id)) {
-                    // Collect all doccheck_ prefixed meta
+                $docacc_id = get_user_meta($user_id, 'docacc_unique_id', true);
+                if (!empty($docacc_id)) {
+                    // Collect all docacc_ prefixed meta
                     $user_data = array();
                     $user_meta = get_user_meta($user_id);
                     foreach ($user_meta as $meta_key => $meta_value) {
-                        if (strpos($meta_key, 'doccheck_') === 0) {
-                            $user_data[str_replace('doccheck_', '', $meta_key)] = $meta_value[0];
+                        if (strpos($meta_key, 'docacc_') === 0) {
+                            $user_data[str_replace('docacc_', '', $meta_key)] = $meta_value[0];
                         }
                     }
                     return $user_data;
@@ -1117,9 +1117,9 @@ if (!class_exists('DocCheck_Login_OAuth')) {
             $this->ensure_session_started(false);
 
             // For session users
-            if (isset($_SESSION['doccheck_session_auth']) && $_SESSION['doccheck_session_auth'] === true) {
+            if (isset($_SESSION['docacc_session_auth']) && $_SESSION['docacc_session_auth'] === true) {
                 // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitize after retrieval.
-                $session_data = isset($_SESSION['doccheck_session_data']) ? (array) $_SESSION['doccheck_session_data'] : array();
+                $session_data = isset($_SESSION['docacc_session_data']) ? (array) $_SESSION['docacc_session_data'] : array();
                 
                 // Sanitize session data
                 return array_map(function ($value) {
@@ -1129,5 +1129,4 @@ if (!class_exists('DocCheck_Login_OAuth')) {
 
             return array();
         }
-    }
 }
